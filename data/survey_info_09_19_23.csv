@@ -1,0 +1,49 @@
+site,pickup_type,survey_type,date,start_time,end_time,temp_c_start,cloud_cover_start,precipitation_start,temp_c_end,cloud_cover_end,precipitation_end,wind_start,wind_end,notes
+14_spruce,,,,,,,,,,,,,,
+lancaster_dt,,,,,,,,,,,,,,
+lancaster_we,,,,,,,,,,,,,,
+lancaster_mk,,,,,,,,,,,,,,
+lancaster_cw,recycling,transect,05-12,05:45,10:30,11,5,0,17,6.5,0,1,1,
+lancaster_qe,recycling,transect,05-15,05:46,09:55,16,0,0,24,0,0,1,1,
+lancaster_qe,none,transect,05-17,05:45,09:25,14,0,0,19,0,0,2,2,
+lancaster_ub,none,transect,05-19,05:45,09:15,15,15,0,17,10,0,1,2,garbage day in nearest neighborhood
+lancaster_qe,garbage,transect,05-23,05:35,08:59,12,100,0,12,100,0,1,1,
+lancaster_we,misc.,transect,05-25,05:36,10:02,12,0,0,17,0,0,0,2,
+lancaster_mk,recycling,transect,05-29,05:38,09:26,11,35,0,15,20,0,2,2,
+lancaster_we,misc.,transect,05-31,05:32,09:46,8,40,0,13,90,0,2,2,
+lancaster_mk,no pickup ,transect,06-01,05:36,08:30,8,5,0,13,5,0,1,2,
+lancaster_cw,no pickup,transect,06-02,05:46,09:30,10,5,0,15,0,0,1,2,"lots of bins left out, maybe no pickup 9n previously scheduled day?"
+lancaster_mk,garbage,transect,06-05,05:35,09:41,11,0,0,15,0,0,3,3,
+lancaster_fc,garbage ,transect,06-06,05:38,08:33,13,0,0,17,0,0,2,2,lots of active construction 
+lancaster_fc,misc.,transect,06-07,05:39,09:13,14,10,0,20,0,0,1,1,lots of active construction 
+2nd_beach,misc.,transect,06-07,10:58,13:31,21,0,0,24,0,0,2,2,camp or school trip to the pool. lots of children leaving food covered but unattended
+2nd_beach,misc.,transect,06-07,18:05,20:06,24,10,0,23,35,0,2,1,concession closed. pool open. mostly adults and families on the beach. many leaving food unattended
+lancaster_cw,garbage,transect,06-19,05:34,08:57,10,100,0,12,100,0,2,2,"light rain on and off throughout, cumulatively ~10% of the survey period"
+lancaster_fc,misc.,transect,06-20,05:40,09:24,10,95,very light,12,100,0,1,1,active construction 
+19_yukon,recycling ,transect,06-21,05:37,09:34,12,100,0,14,100,consistent drizzle,1,1,several active home construction  and renovation projects making noise
+lancaster_dt,misc.,transect,06-22,05:37,08:37,12,10,0,16,0,0,1,1,
+19_yukon,no pickup,transect,06-23,05:36,09:56,14,5,0,20,10,0,1,1,
+lancaster_dt,misc.,transect,06-26,05:39,08:02,14,5,0,16,0,0,1,1,many garbage trucks seen
+14_spruce,garbage,transect,06-27,05:38,09:39,14,10,0,18,0,0,2,2,
+19_yukon,garbage,transect,06-28,05:38,09:43,15,0,0,19,0,0,1,2,
+2nd_beach,misc.,transect,07-04,05:43,09:11,17,0,0,21,0,0,3,3,"hazy skies. some smoke. tide high, waves splashing onto seawall "
+14_spruce,recycling,transect,07-05,05:43,09:58,17,30,0,22,40,0,1,2,
+14_spruce,no pickup,transect,07-10,05:44,10:33,14,0,0,17,40,0,3,3,
+strathcona,no pickup,transect,07-11,05:44,09:05,14,20,0,17,20,0,2,2,
+lancaster_sh,recycling ,transect,07-12,05:46,09:53,15,50,0,20,25,0,1,1,
+strathcona,garbage,transect,07-14,05:44,08:28,15,0,0,18,0,0,1,1,
+lancaster_sh,garbage,transect,07-26,05:54,09:53,13,65,0,17,50,0,1,1,multiple middle-aged white women directly feeding crows. one motive is to avoid attacks. video on phone
+lancaster_sh,no pickup,transect,07-27,05:55,09:35,14,20,0,19,20,0,1,1,ran into white man in 30s. confirmed woman above feeds crows every day.
+43_joyce_spot,,spot,07-28,07:58,08:30,17,0,0,18,0,0,1,1,1 crow
+72_cartier_spot,,spot,07-28,08:58,09:35,18,0,0,20,0,0,1,1,no crows
+transfer_station_parking,,spot,07-28,10:03,10:27,20,2,0,21,2,0,1,1,told many crows gulls owl other birds inside. owl lived in tunnel. 
+baseball,,spot,07-28,11:15,11:54,22,10,0,22,20,0,2,2,before game start
+granville_island,,spot,07-28,13:42,14:25,23,5,0,24,10,0,3,3,stunt show during survey
+baseball ,,spot,07-28,15:05,15:44,24,10,0,25,15,0,2,2,during 7th inning to end of game
+baseball,,spot,07-28,19:08,19:44,24,5,0,23,10,0,1,1,"after game; employee says ""crows come after every game and eat the food waste in the BBQ area and peanuts in the bleachers"""
+english_bay,,spot,07-28,20:22,21:10,21,25,0,20,15,0,1,1,
+43_churchill,recycling ,transect,08-02,06:08,10:05,15,0,0,20,40,0,1,1,
+strathcona,recycling ,transect,08-04,06:22,09:25,16,0,0,20,0,0,1,1,
+oppenheimer,,spot,08-04,09:27,09:51,20,0,0,21,0,0,1,2,
+43_churchill,no pickup,transect,08-15,06:22,09:59,18,0,0,22,0,0,1,1,
+43_churchill,garbage,transect,08-17,06:22,09:45,17,5,0,21,5,0,1,2,"house fire on nw corner of transect. some smoke smelled early, none by 8 AM. also, middle aged brown man told us hawks moved in 2 months ago and kicked out all the crows. ""it's awesome"". he said ravens at first, and I askwd to clarify. he said he dind't know the difference."

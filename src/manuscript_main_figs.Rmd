@@ -1,0 +1,570 @@
+---
+title: "Manuscript main figs"
+author: "Daniel Forrest"
+date: '2025-05-29'
+output: html_document
+---
+
+```{r}
+#load libraries
+library(here)
+library(ggplot2)
+library(scales)
+library(sf)
+library(tidyr)
+library(sf)
+library(viridis)
+library(dplyr)
+library(cowplot)
+library(scico)
+```
+
+```{r setup, include=FALSE}
+# ### read empirical data
+load(file = here("data", "dat_final_750.Rdata"))
+load(file = here("data", "dat_no_ub_750.Rdata"))
+
+```
+
+#### Figure 2 Map 
+#### Completed via in Canva customization adding legend and inset map
+
+```{r}
+library(terra)
+library(sf)
+library(here)
+library(maps)  # for inset map
+
+# ----------------------------
+# Load data
+# ----------------------------
+file_path <- here("data", "raw","MetroVan_LCC_2020_final.tif")
+lcc2020 <- rast(file_path)
+
+load(here("data", "sites_3857.Rdata"))
+sites_3857 <- sites_3857[-c(8),]  # remove one site if needed
+
+sites_matched <- st_transform(sites_3857, crs(lcc2020))
+
+# Crop raster to sites + buffer
+site_extent <- ext(vect(sites_matched))
+site_extent_buffered <- ext(
+  xmin(site_extent) - 1500,
+  xmax(site_extent) + 1500,
+  ymin(site_extent) - 1500,
+  ymax(site_extent) + 1500
+)
+lcc2020_crop <- crop(lcc2020, site_extent_buffered)
+
+# Land cover classes
+lc_classes <- data.frame(
+  value = 1:14,
+  label = c(
+    "Buildings", "Paved", "Other Built", "Barren", "Soil",
+    "Coniferous", "Shrub","Deciduous", "Modified Grass",
+    "Natural Grass", "Non-Photo Veg.", "Shadow",
+    "Water", "Snow/Ice"
+  )
+)
+levels(lcc2020_crop) <- lc_classes
+
+earthy_colors <- c(
+  "firebrick", "#7f7f7f", "pink", "lightyellow", "brown4",
+  "#1b7837", "green", "#4daf4a", "darkolivegreen1",
+  "darkolivegreen3", "lemonchiffon2", "black", "#2c7bb6", "#ffffff"
+)
+
+# Site labels
+site_labels <- c(
+  "Collingwood", "McKenzie", "Shaugnessy", "Queen Elizabeth",
+  "False Creek", "Downtown", "West End", "43 & Churchill",
+  "14 & Spruce", "19 & Yukon", "Strathcona", "2nd Beach"
+)
+
+# Centroids & label offsets
+site_centroids <- st_centroid(sites_matched)
+label_coords <- st_coordinates(site_centroids)
+
+# Bottom of map for “center” push
+bottom_y <- min(label_coords[,2]) - 500
+center_x <- mean(label_coords[,1])
+label_center <- c(center_x, bottom_y)
+
+# Direction vectors and normalization
+dx <- label_coords[,1] - label_center[1]
+dy <- label_coords[,2] - label_center[2]
+dist <- sqrt(dx^2 + dy^2)
+dx_norm <- dx / dist
+dy_norm <- dy / dist
+push_dist <- 550
+
+label_coords_offset <- label_coords
+label_coords_offset[,1] <- label_coords[,1] + dx_norm * push_dist
+label_coords_offset[,2] <- label_coords[,2] + dy_norm * push_dist
+
+# Specific vertical adjustments
+i_col <- which(site_labels == "Collingwood")
+i_mck <- which(site_labels == "McKenzie")
+label_coords_offset[i_col,2] <- label_coords_offset[i_col,2] + 120
+label_coords_offset[i_mck,2] <- label_coords_offset[i_mck,2] + 300
+label_coords_offset[i_col,1] <- label_coords_offset[i_col,1] - 120
+label_coords_offset[i_mck,1] <- label_coords_offset[i_mck,1] + 300
+
+# ----------------------------
+# Plot figure
+# ----------------------------
+
+pdf(here("figs", "Figure2.pdf"), width = 15, height = 12)
+
+# 1. Layout: main map + legend
+layout(matrix(c(1,2), ncol = 2), widths = c(4,1))
+par(mar = c(3,4,3,0))
+
+# Main map
+plot(lcc2020_crop,
+     main = "",
+     col = earthy_colors,
+     type = "classes",
+     axes = FALSE,
+     legend = FALSE)
+plot(st_geometry(sites_matched), add = TRUE, lwd = 4, border = "black")
+
+# Labels with halo
+segments(label_coords[,1], label_coords[,2],
+         label_coords_offset[,1], label_coords_offset[,2],
+         col = "black", lwd = 3)
+offsets <- expand.grid(dx = c(-1,0,1), dy = c(-1,0,1))
+for(i in 1:nrow(offsets)) {
+  if(offsets$dx[i]!=0 | offsets$dy[i]!=0){
+    text(label_coords_offset[,1]+offsets$dx[i]*20,
+         label_coords_offset[,2]+offsets$dy[i]*20,
+         labels = site_labels,
+         cex=1.5,font=2,col="black")
+  }
+}
+text(label_coords_offset,
+     labels=site_labels,cex=1.5,font=2,col="white")
+
+# -------------------
+# North arrow (triangle style)
+# -------------------
+x_arrow <- xmax(site_extent_buffered) - 1000
+y_arrow <- ymax(site_extent_buffered) - 1000
+arrow_height <- 600
+arrow_width <- 200
+polygon(x=c(x_arrow-arrow_width/2, x_arrow+arrow_width/2, x_arrow),
+        y=c(y_arrow, y_arrow, y_arrow+arrow_height),
+        col="black")
+text(x_arrow, y_arrow + arrow_height + 200, "N", font=2, cex=1.5)
+
+# -------------------
+# Scale bar upper-left
+# -------------------
+scale_x <- xmin(site_extent_buffered) + 500
+scale_y <- ymax(site_extent_buffered) - 700
+rect(scale_x, scale_y, scale_x + 500, scale_y + 50, col="black")
+rect(scale_x + 500, scale_y, scale_x + 1000, scale_y + 50, col="white")
+text(scale_x + 250, scale_y + 100, "500 m", cex=1.2)
+text(scale_x + 750, scale_y + 100, "1000 m", cex=1.2)
+
+# -------------------
+# Inset map (top-right)
+# -------------------
+par(fig=c(0.65,0.95,0.7,0.95), new=TRUE, mar=c(0,0,0,0))
+map("world", regions=c("Canada","USA"), fill=TRUE, col="lightgrey", border="white", lwd=0.5)
+study_centroid <- st_coordinates(st_centroid(st_union(sites_matched)))
+points(study_centroid[,1], study_centroid[,2], pch=19, col="red", cex=2)
+
+# -------------------
+# Legend (right panel)
+# -------------------
+par(mar=c(2,0,2,0))
+plot.new()
+plot.window(xlim=c(0,1), ylim=c(0,1))
+legend(x=-0.13, y=0.7,
+       legend=lc_classes$label,
+       fill=earthy_colors,
+       border="black",
+       cex=1.8,
+       bty="n",
+       title="Land Cover",
+       xjust=0)
+
+dev.off()
+```
+### Figure 3
+
+```{r}
+library(ggplot2)
+library(ggridges)
+library(patchwork)
+library(scales)
+library(here)
+library(sf)
+library(dplyr)
+library(tidyr)
+
+# === Load posterior samples ===
+load(file = here("data", "fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata"))
+posterior <- rstan::extract(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)
+
+# === Figure 3a: Ridge Plot ===
+posterior_df <- data.frame(
+  beta1 = posterior$beta1,
+  beta2 = posterior$beta2,
+  delta1 = posterior$delta1
+)
+
+posterior_long <- pivot_longer(posterior_df, cols = everything(), names_to = "parameter", values_to = "value")
+
+param_colors <- c("beta1" = "purple", "beta2" = "purple", "delta1" = "orange")
+
+plot_a <- ggplot(posterior_long, aes(x = value, y = parameter, fill = parameter)) +
+  geom_density_ridges(
+    scale = 2.5,
+    alpha = 0.6,
+    color = "white",
+    rel_min_height = 0.01
+  ) +
+  theme_minimal(base_size = 10) +
+  scale_fill_manual(values = param_colors) +
+  scale_y_discrete(labels = c(
+    "beta1" = "Housing-tenure—density Scale \n Effect on Quantity",
+    "beta2" = "Enfranchisement Scale \n Effect on Quantity",
+    "delta1" = "Service Roads \n Effect on Absence"
+  )) +
+  labs(
+    x = "Coefficient Value",
+    y = NULL #,
+    #title = "(a)"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray40") +
+  guides(fill = "none") +
+  theme(
+    plot.title = element_text(face = "bold", hjust = -0.1),
+    axis.text.y = element_text(
+      face = "bold",
+      color = c("purple", "purple", "orange")[order(unique(posterior_long$parameter))]
+    )
+  )
+
+# === Figure 3b: Spatial Map ===
+
+# Medians
+mu_med     <- median(posterior$mu0)
+beta1_med  <- median(posterior$beta1)
+beta2_med  <- median(posterior$beta2)
+gamma_med  <- median(posterior$gamma)
+delta1_med <- median(posterior$delta1)
+delta2_med <- median(posterior$delta2)
+alpha_med  <- median(posterior$alpha)
+
+# Load spatial data
+load(file = here("data", "van_dat_final_750.Rdata"))
+
+# Predict
+X1 <- van_dat$Factor1_wins
+X2 <- van_dat$Factor3_wins
+P1 <- van_dat$service_road_weight
+
+log_scale <- mu_med + beta1_med * X1 + beta2_med * X2
+sigma <- exp(log_scale)
+weibull_mean <- sigma * gamma(1 + 1 / alpha_med)
+pi <- plogis(gamma_med + delta1_med * P1)
+expected_y <- (1 - pi) * weibull_mean
+
+predicted_fw_score <- st_sf(
+  geometry = st_geometry(van_dat),
+  expected_fw_score = expected_y
+)
+
+
+# Map (plot_b) — keep legend, remove axis ticks/labels, shrink margins
+plot_b <- ggplot(predicted_fw_score) +
+  geom_sf(aes(fill = expected_fw_score), color = NA) +
+  scale_fill_viridis_c(
+    option = "inferno",
+    trans = "log10",
+    name = "Expected FW Score",
+    limits = c(0.0005, max(predicted_fw_score$expected_fw_score)),
+    breaks = c(0.0005, 0.01, 0.1, 1, 10, 70),
+    labels = c("0", "0.01", "0.1", "1", "10", "70")
+  ) +
+  theme_minimal(base_size = 12) +
+  #labs(title = "(b)") +
+  theme(
+    plot.title = element_text(face = "bold", hjust = -0.1),
+    panel.grid = element_blank(),
+    axis.text = element_blank(),        # Remove lat/lon labels
+    axis.ticks = element_blank(),       # Remove tick marks
+    axis.title = element_blank(),       # Remove axis titles
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    legend.position = "right",          # Ensure it stays beside the map
+    plot.margin = margin(t = 0, r = 5, b = 5, l = 5)
+  )
+
+
+
+# Ridge plot (plot_a)
+plot_a <- plot_a +
+  theme(
+    plot.margin = margin(2, 2, 2, 2)
+  )
+
+# Map (plot_b)
+plot_b <- plot_b +
+  theme(
+    plot.margin = margin(2, 2, 2, 2),  # pull map left
+    legend.position = "right",
+    legend.justification = "center",
+    legend.box.margin = margin(0, 0, 0, -10),  # pull legend closer
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  coord_sf(expand = FALSE)
+
+
+combined_plot <- ggdraw() +
+  draw_plot(plot_a, x = 0, y = 0.55, width = 1, height = 0.4) +
+  draw_plot(plot_b, x = 0, y = 0, width = 1, height = 0.6) +  # adjust x/y if needed
+  draw_plot_label(
+    label = c("(a)", "(b)"),
+    x = c(0.015, 0.015),
+    y = c(0.98, 0.52),  # this y for (b) puts it *just above* plot_b
+    size = 14,
+    fontface = "bold"
+  )
+
+# === Save ===
+ggsave(
+  filename = here("figs", "Figure3.pdf"),
+  plot = combined_plot,
+  width = 4.875,
+  height = 5.5, 
+  dpi = 300
+)
+
+
+
+```
+
+#### Figure 4
+
+```{r}
+library(ggplot2)
+library(patchwork)
+library(scales)
+library(here)
+library(sf)
+library(dplyr)
+
+# =========================================================
+# 1. LOAD DATA + POSTERIORS (MAIN MODEL)
+# =========================================================
+
+load(file = here("data", "fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata"))
+posterior_main <- rstan::extract(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)
+
+load(file = here("data", "van_dat_final_750.Rdata"))
+
+# --- Main model parameters (ZIW / Weibull process model)
+mu_med     <- median(posterior_main$mu0)
+beta1_med  <- median(posterior_main$beta1)
+beta2_med  <- median(posterior_main$beta2)
+gamma_med  <- median(posterior_main$gamma)
+delta1_med <- median(posterior_main$delta1)
+alpha_med  <- median(posterior_main$alpha)
+
+# Predict
+X1 <- van_dat$Factor1_wins
+X2 <- van_dat$Factor3_wins
+P1 <- van_dat$service_road_weight
+
+log_scale <- mu_med + beta1_med * X1 + beta2_med * X2
+sigma <- exp(log_scale)
+weibull_mean <- sigma * gamma(1 + 1 / alpha_med)
+pi <- plogis(gamma_med + delta1_med * P1)
+expected_y <- (1 - pi) * weibull_mean
+
+predicted_fw_score <- st_sf(
+  geometry = st_geometry(van_dat),
+  expected_fw_score = expected_y
+)
+
+# =========================================================
+# 2. LOAD PROXY MODEL (TWEEDIE)
+# =========================================================
+
+load(file = here("data", "fit_hier_1pred_tweedie.Rdata"))
+posterior_proxy <- rstan::extract(fit_hier_1pred_tweedie)
+
+mu0_med   <- median(posterior_proxy$mu0)
+beta1_med <- median(posterior_proxy$beta1)
+
+X1_proxy <- van_dat$nearest_food_retail
+
+eta <- mu0_med + beta1_med * X1_proxy
+proxy_mean <- exp(eta)
+
+pred_proxy <- st_sf(
+  geometry = st_geometry(van_dat),
+  value = proxy_mean
+)
+
+# =========================================================
+# 3. DIFFERENCE (LOG SCALE = BEST PRACTICE)
+# =========================================================
+
+pred_diff <- st_sf(
+  geometry = st_geometry(van_dat),
+  value = log10(predicted_fw_score$expected_fw_score + 1e-6) - log10(pred_proxy$value + 1e-6)
+)
+
+# =========================================================
+# 4. SHARED THEME (PUBLICATION-READY)
+# =========================================================
+
+map_theme <- theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    plot.title = element_text(face = "bold", size = 13, hjust = 0),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    legend.position = "right",
+    plot.margin = margin(5, 5, 5, 5)
+  )
+
+# =========================================================
+# 5. PLOT (A) MAIN MODEL
+# =========================================================
+
+plot_a <- ggplot(predicted_fw_score) +
+  geom_sf(aes(fill = expected_fw_score), color = NA) +
+  scale_fill_viridis_c(
+    option = "inferno",
+    trans = "log10",
+    name = "Expected FW Score",
+    limits = c(0.0005, max(predicted_fw_score$expected_fw_score)),
+    breaks = c(0.0005, 0.01, 0.1, 1, 10, 70),
+    labels = c("0", "0.01", "0.1", "1", "10", "70")
+  ) +
+  labs(title = "(a) Process model") +
+  map_theme
+
+
+# =========================================================
+# 6. PLOT (B) PROXY MODEL
+# =========================================================
+
+plot_b <- ggplot(pred_proxy) +
+  geom_sf(aes(fill = value), color = NA) +
+  scale_fill_viridis_c(
+    option = "inferno",
+    trans = "log10",
+    name = "Expected FW Score",
+    limits = c(0.0005, max(predicted_fw_score$expected_fw_score)),
+    breaks = c(0.0005, 0.01, 0.1, 1, 10, 70),
+    labels = c("0", "0.01", "0.1", "1", "10", "70")
+  ) +
+  labs(title = "(b) Proxy model") +
+  map_theme
+
+
+
+# =========================================================
+# 6. PLOT (B) PROXY MODEL
+# =========================================================
+
+plot_c <- ggplot(pred_proxy) +
+  geom_sf(aes(fill = value), color = NA) +
+  scale_fill_viridis_c(
+    option = "inferno",
+    trans = "log10",
+    name = "Expected FW Score",
+    limits = c(0.08,0.17),
+    breaks = c(0.08,0.1,0.12,0.14,0.16),
+    labels = c("0.08","0.1","0.12","0.14","0.16")
+  ) +
+  labs(title = "(c) Proxy model") +
+  map_theme
+
+
+# =========================================================
+# 7. PLOT (C) DIFFERENCE
+# =========================================================
+
+# plot_c <- ggplot(pred_diff) +
+#   geom_sf(aes(fill = value), color = NA) +
+#   scale_fill_gradient2(
+#     low = "#2166AC", 
+#     mid = "white",
+#     high = "#B2182B"
+#     midpoint = 0,
+#     name = "log ratio"
+#   ) +
+#   labs(title = "(c) Log difference") +
+#   map_theme
+# 
+
+plot_d <- ggplot(pred_diff) +
+  geom_sf(aes(fill = value), color = NA) +
+  scale_fill_scico(
+    palette = "vik",
+    midpoint = 0,
+    name = "log ratio"
+  ) +
+  labs(title = "(d) Log difference") +
+  map_theme
+
+
+# =========================================================
+# 8. COMBINE
+# =========================================================
+
+# Top row: process-based and proxy models
+top_row <- plot_grid(
+  plot_a,
+  plot_b,
+  #labels = c("a", "b"),
+  nrow = 1,
+  align = "hv",
+  axis = "tblr"
+)
+
+bottom_row <- plot_grid(
+  plot_c,
+  plot_d,
+  nrow = 1,
+  align = "hv",
+  axis = "tblr",
+  rel_widths = c(1, 1),
+  rel_heights = c(1,1)
+)
+
+# Stack rows vertically
+final_plot <- plot_grid(
+  top_row,
+  bottom_row,
+  ncol = 1,
+  rel_heights = c(1, 1)
+)
+
+ggsave(
+  filename = here("figs", "Figure4.pdf"),
+  plot = final_plot,
+  device = "pdf",
+  width = 10,
+  height = 8.3333334,
+  units = "in"
+)
+
+
+
+```
+

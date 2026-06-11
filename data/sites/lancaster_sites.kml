@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>lancaster_sites.kmz</name>
+	<gx:CascadingStyle kml:id="__managed_style_259D931F1518EBBFB262">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.0.22.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<scale>1.56</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<width>1.5</width>
+			</LineStyle>
+			<PolyStyle>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_101C400C8618EBBFB262">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.0.22.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<scale>1.3</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+			</LineStyle>
+			<PolyStyle>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0623BF105318EBBFB262">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_101C400C8618EBBFB262</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_259D931F1518EBBFB262</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Folder id="094DDEC98E18EBBDD71F">
+		<name>Lancaster</name>
+		<open>1</open>
+		<Placemark id="10976550D718EBBDD71F">
+			<name>Lancaster_CW</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.184538664925,49.25151056985047,0 -123.1792348638775,49.25149153444207,0 -123.179221696828,49.25331991748301,0 -123.1845257355631,49.25332382471672,0 -123.184538664925,49.25151056985047,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="2AF9BB17CF18EBBDD71F">
+			<name>Lancaster_MK</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1728879255305,49.25237473325773,0 -123.1678041972017,49.25234643023664,0 -123.1677787386592,49.2546132722147,0 -123.1729058431789,49.2546302420204,0 -123.1728879255305,49.25237473325773,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="0E6F06BC6418EBBDD720">
+			<name>Lancaster_SH</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1319558009722,49.25110302357295,0 -123.1320032660848,49.25149397795025,0 -123.1320874421768,49.25187645837361,0 -123.1332385616543,49.25181715791268,0 -123.1345079379889,49.25185234866607,0 -123.1367055297759,49.25198420062453,0 -123.1366319470799,49.25166647333086,0 -123.1366116669748,49.2515096527389,0 -123.1366155589587,49.25135262263627,0 -123.1366485476055,49.25073176511955,0 -123.1366941223537,49.24947670204964,0 -123.1320071848852,49.24939788491044,0 -123.1319558009722,49.25110302357295,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="1E80B0EE0A18EBBDD720">
+			<name>Lancaster_QE</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1207926619098,49.23742929737377,0 -123.1209148685107,49.23420198324714,0 -123.1178493375905,49.23410591101492,0 -123.117746488866,49.23731794960556,0 -123.1207926619098,49.23742929737377,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="2A3BA8068318EBBDD720">
+			<name>Lancaster_FC</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1047420494223,49.26646998381733,0 -123.1046609001789,49.26831526686283,0 -123.110743296609,49.2684143062931,0 -123.1108272497119,49.26659104914113,0 -123.1047420494223,49.26646998381733,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="376ED0153D18EBBDD720">
+			<name>Lancaster_DT</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1118981957105,49.28404397063009,0 -123.1139229559382,49.28537028186689,0 -123.1181308772405,49.28248963138179,0 -123.116156354912,49.28123810882497,0 -123.1118981957105,49.28404397063009,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="055C9CA27918EBBDD721">
+			<name>Lancaster_WE</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1392069843375,49.28482255541537,0 -123.1413632172386,49.28347709455212,0 -123.1376050207494,49.28102687636636,0 -123.1354943524429,49.28244439095439,0 -123.1392069843375,49.28482255541537,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+		<Placemark id="1FA8AB6CDE18EBBDD721">
+			<name>Lancaster_UB</name>
+			<styleUrl>#__managed_style_0623BF105318EBBFB262</styleUrl>
+			<Polygon>
+				<tessellate>1</tessellate>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.2081751129477,49.2572350080901,0 -123.2099798579265,49.25447022706688,0 -123.2069210985737,49.25362852567321,0 -123.2051280271226,49.25637828921375,0 -123.2081751129477,49.2572350080901,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+	</Folder>
+</Document>
+</kml>

@@ -1,0 +1,1311 @@
+---
+title: "manuscript_supplemental_figs"
+author: "Daniel Forrest"
+date: '2026-04-09'
+output: html_document
+---
+
+```{r}
+## Factor Analysis of Housing Vars
+
+library(sf)
+library(ggplot2)
+library(reshape2)
+library(ggrepel)
+library(gridExtra)
+library(cowplot)
+library(bayesplot)
+library(patchwork)
+library(here)
+library(readr)
+library(dplyr)
+library(reshape2)
+library(RColorBrewer)
+
+
+### create functions for Fig. S1 ###
+# Get lower triangle of the correlation matrix
+get_lower_tri<-function(cormat){
+  cormat[upper.tri(cormat)] <- NA
+  return(cormat)
+}
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+
+reorder_cormat <- function(cormat){
+  dd <- as.dist((1 - cormat) / 2)
+  hc <- hclust(dd)
+  return(cormat[hc$order, hc$order])  # Return the reordered matrix
+}
+
+```
+```{r setup, include=FALSE}
+# ### read empirical data
+load(file = here("data", "dat_final_750.Rdata"))
+load(file = here("data", "dat_no_ub_750.Rdata")) ### without UBC site (not used in final model)
+#load(file = here("data", "dat_no_ub_scaled_750.Rdata")) ### centered and scaled data (used in the final model)
+
+```
+
+
+#### Generate Figure S1, correlation matrix of variables associated with the presence of food waste #####
+
+```{r}
+
+#### cor matrix 750. m #####
+### explore correlation of variables associated with the presence of food waste ### 
+
+
+dat_no_ub_no0s <- dat_no_ub %>%
+  filter(fw_score_weighted > 0 ) ### 0 equivalent val (minimum fw_score_weighted val after scaling, not to be used as response)
+
+# dat_no_ub_scaled_no0s <- dat_no_ub %>%
+#   filter(fw_score_weighted > -0.1632483) ### 0 equivalent val (minimum fw_score_weighted val after scaling, not to be used as response)
+# 
+
+
+my_data <- dat_no_ub_no0s %>% select(where(is.numeric))
+#my_data <- dat_no_ub_scaled_no0s %>% select(where(is.numeric))
+my_data <- as.data.frame(my_data)
+
+my_data <- my_data[, colSums(is.na(my_data)) == 0]  # Remove NA columns
+
+# Define the variables to keep in the heatmap
+selected_vars <- c("rent_pct", "single_detached" ,
+                   "nearest_food_retail","nearest_shelter_dist","indig_pct",
+                   "female_pct", "SCOREMAT", "SCORESOC", "pop_km",
+                   "household_income", "housing_highdensity", "housing_lowdensity",
+                   "thirtyonshelter_majorrepairs", "notsuitable_majorrepairs", "pct_rent_subsidized", "pct_housing_notsuitable","pct_rent_thiry", "housing_low_density", "housing_high_density", "poorservice_housing")  # Replace with actual column names
+
+
+
+# Ensure the selected variables exist in the dataset
+selected_vars <- selected_vars[selected_vars %in% colnames(my_data)]
+
+# Subset data to only include selected variables
+my_data_subset <- my_data[, selected_vars]
+cormat <- cor(my_data_subset)
+
+cormat <- reorder_cormat(cormat)
+lower_tri <- get_lower_tri(cormat)
+melted_cormat <- melt(lower_tri)
+
+
+
+# # Filter correlations greater than 0.5 (absolute value)
+# melted_cormat <- melted_cormat[abs(melted_cormat$value) > 0.5, ]
+# melted_cormat <- melted_cormat[complete.cases(melted_cormat), ]
+
+magma_colors <- magma(10)
+
+heatmap <- ggplot(data = melted_cormat, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(value, 2)), color = "black", size = 3) +
+  scale_fill_gradient2(
+    low = magma_colors[7],     # Dark orange (negative correlations)
+    mid = "white",              # Neutral zero
+    high = magma_colors[3],     # Deep purple (positive correlations)
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "Pearson R"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    axis.title = element_blank()
+  )
+
+ggsave(
+  filename = here("figs", "FigureS1.pdf"),
+  plot = heatmap,
+  device = pdf,
+  width = 8,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+#### Figure S2 Factor Analysis plot ###
+
+```{r}
+load(file = here("data", "dat_no_ub_scaled_750.Rdata"))
+
+my_data <- dat_no_ub_scaled %>% dplyr::select(where(is.numeric))
+my_data <- as.data.frame(my_data)
+my_data <- my_data[, colSums(is.na(my_data)) == 0]  # Remove NA columns
+
+
+
+# Define the variables to keep in the heatmap
+selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
+                   "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
+                   "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing")
+
+
+# # Define the variables to keep in the heatmap
+# selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
+#                    "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
+#                    "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing", "v_CA21_386: Average age")
+
+# # Define the variables to keep in the heatmap
+# selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
+#                    "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
+#                    "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing", "elderly_pct")
+
+
+
+
+# Ensure the selected variables exist in the dataset
+selected_vars <- selected_vars[selected_vars %in% colnames(my_data)]
+
+# Subset data to only include selected variables
+my_data_subset <- my_data[, selected_vars]
+
+# Ensure no missing values
+my_data_subset <- na.omit(my_data_subset)
+
+# Compute eigenvalues of the correlation matrix
+eigen_vals <- eigen(cor(my_data_subset))$values
+
+# Scree plot
+plot(eigen_vals, type = "b", pch = 19,
+     main = "Scree Plot",
+     xlab = "Factor Number", ylab = "Eigenvalue")
+abline(h = 1, col = "red", lty = 2)  # Kaiser criterion line
+
+
+# Set number of factors to extract
+## due to Kaiser Criterion: https://psycnet.apa.org/fulltext/2016-15750-001.html
+num_factors <- 3
+#num_factors <- 4 # for avg age/eldery
+
+# Perform factor analysis
+fa_result <- factanal(my_data_subset, factors = num_factors, rotation = "varimax", scores = "regression")
+
+
+loadings_matrix <- fa_result$loadings  # or fa_model$weights for regression method
+
+
+fa_scores <-as.data.frame(fa_result$scores)
+
+# View summary of the result
+print(fa_result)
+
+# Extract factor loadings
+loadings_df <- data.frame(fa_result$loadings[, 1:num_factors])
+loadings_df$Variable <- rownames(loadings_df)
+loadings_melted <- melt(loadings_df, id.vars = "Variable", variable.name = "Factor", value.name = "Loading")
+
+# Plot factor loadings
+fa_loadings_plot <- ggplot(loadings_melted, aes(x = Variable, y = Loading, fill = Factor)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Factor Loadings", x = "Variable", y = "Loading") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(fa_loadings_plot)
+
+
+
+# Convert to data frame for plotting
+loadings_df <- as.data.frame(unclass(fa_result$loadings))
+loadings_df$Variable <- rownames(loadings_df)
+
+# Reshape to long format manually
+loadings_long <- reshape(loadings_df, 
+                         varying = names(loadings_df)[1:num_factors], 
+                         v.names = "Loading",
+                         timevar = "Factor",
+                         times = paste0("Factor", 1:num_factors),
+                         direction = "long")
+
+# Plot (using base R barplot)
+par(mar = c(10, 4, 4, 2))  # increase bottom margin
+with(loadings_long, {
+  barplot(Loading, names.arg = Variable, las = 2,
+          main = "Factor Loadings", col = as.factor(Factor))
+})
+
+# Extract and scale loadings
+loadings <- fa_result$loadings[, 1:3]
+
+
+# Convert to data frame
+loadings_df <- as.data.frame(loadings)
+loadings_df$Variable <- rownames(loadings_df)
+
+# Optional: scale loadings for visibility
+scale_factor <- 1.5
+loadings_df$Factor1 <- loadings_df[,1] * scale_factor
+loadings_df$Factor2 <- loadings_df[,2] * scale_factor
+loadings_df$Factor3 <- loadings_df[,3] * scale_factor
+#loadings_df$Factor4 <- loadings_df[,4] * scale_factor
+
+# Save plot to PDF
+pdf(here("figs","FA12.pdf"), width = 10, height = 8)
+
+
+# Plot
+ggplot(loadings_df, aes(x = 0, y = 0, xend = Factor1, yend = Factor2)) +
+  geom_segment(arrow = arrow(length = unit(0.2, "cm")), color = "red") +
+  geom_text_repel(aes(x = Factor1, y = Factor2, label = Variable), size = 4) +
+  coord_equal() +
+  xlim(-1.5, 1.5) + ylim(-1.5, 1.5) +
+  labs(title = "Factor Analysis Loadings Biplot",
+       x = "Factor 1", y = "Factor 2") +
+  theme_minimal()
+
+dev.off()
+
+# Save plot to PDF
+pdf(here("figs","FigureS2.pdf"), width = 10, height = 8)
+
+# Plot
+ggplot(loadings_df, aes(x = 0, y = 0, xend = Factor1, yend = Factor3)) +
+  geom_segment(arrow = arrow(length = unit(0.2, "cm")), color = "red") +
+  geom_text_repel(aes(x = Factor1, y = Factor3, label = Variable), size = 4) +
+  coord_equal() +
+  xlim(-1.5, 1.5) + ylim(-1.5, 1.5) +
+  labs(title = "Factor Analysis Loadings Biplot",
+       x = "Housing-tenure—density Scale", y = "Enfranchisement Scale") +
+  theme_minimal()
+
+dev.off()
+
+
+# # Save plot to PDF
+# pdf(here("figs","FA23.pdf"), width = 10, height = 8)
+# 
+# # Plot
+# ggplot(loadings_df, aes(x = 0, y = 0, xend = Factor2, yend = Factor3)) +
+#   geom_segment(arrow = arrow(length = unit(0.2, "cm")), color = "red") +
+#   geom_text_repel(aes(x = Factor2, y = Factor3, label = Variable), size = 4) +
+#   coord_equal() +
+#   xlim(-1.5, 1.5) + ylim(-1.5, 1.5) +
+#   labs(title = "Factor Analysis Loadings Biplot",
+#        x = "Factor 2", y = "Factor 3") +
+#   theme_minimal()
+# 
+# dev.off()
+
+```
+
+##### Figure S3 Weibull demo ####
+
+```{r}
+set.seed(1234)
+
+pdf(here::here("figs", "FigureS3.pdf"),
+    width = 6, height = 9)
+
+par(mfrow = c(3, 1),
+    mar = c(4, 4, 2, 1))  # bottom, left, top, right
+
+# ---- Panel A ----
+hist(rweibull(100, 0.5, 0.1),
+     main = "",
+     xlab = "Value",
+     col = "grey80",
+     border = "white")
+
+mtext("A)", side = 3, adj = 0, line = 0.5, cex = 1, font = 2)
+
+# ---- Panel B ----
+hist(rweibull(100, 0.5, 10),
+     main = "",
+     xlab = "Value",
+     col = "grey80",
+     border = "white")
+
+mtext("B)", side = 3, adj = 0, line = 0.5, cex = 1, font = 2)
+
+# ---- Panel C ----
+hist(rweibull(100, 4, 0.1),
+     main = "",
+     xlab = "Value",
+     col = "grey80",
+     border = "white")
+
+mtext("C)", side = 3, adj = 0, line = 0.5, cex = 1, font = 2)
+
+dev.off()
+```
+
+
+### Figure S4 
+
+
+```{r}
+# (a) all values
+p1 <- ggplot(dat_final, aes(x = fw_score_weighted)) +
+  geom_histogram(
+    binwidth = 0.3,
+    fill = "#440154",
+    color = "white",
+    alpha = 0.9
+  ) +
+  labs(
+    x = "Weighted Food Waste Score",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(face = "bold")
+  )
+
+# (b) positives only
+p2 <- ggplot(dat_final %>% filter(fw_score_weighted > 0),
+             aes(x = fw_score_weighted)) +
+  geom_histogram(
+    binwidth = 0.2,
+    fill = "#440154",
+    color = "white",
+    alpha = 0.9
+  ) +
+  labs(
+    x = "Weighted Food Waste Score",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(face = "bold")
+  )
+
+# combine with labels
+final_plot <- (p1 | p2) +
+  plot_annotation(
+    tag_levels = "a",
+    tag_suffix = ")"
+  )
+
+# save
+ggsave(
+  filename = here("figs", "FigureS4.png"),
+  plot = final_plot,
+  width = 12,
+  height = 5,
+  dpi = 300
+)
+```
+
+ 
+ 
+ 
+#### Figure S5
+
+
+
+
+```{r}
+set.seed(1234)
+
+N <- 4540
+J <- 13
+n_sim <- 20
+
+all_sims <- list()
+
+for (i in 1:n_sim) {
+
+  site_id <- sample(1:J, N, replace = TRUE)
+
+  X1 <- runif(N)
+  X2 <- runif(N)
+  P1 <- runif(N)
+
+  # ---- PRIORS (MATCH STAN) ----
+  alpha <- abs(rnorm(1, 0.5, 0.5))
+
+  mu0 <- rnorm(1, 0, 1)
+  tau_mu <- abs(rnorm(1, 0, 1))
+  mu_raw <- rnorm(J, 0, 1)
+
+  beta1 <- rnorm(1, 0, 1)
+  beta2 <- rnorm(1, 0, 1)
+
+  gamma <- rnorm(1, 1, 1)
+  delta1 <- rnorm(1, 0, 1)
+
+  # ---- TRANSFORM ----
+  mu <- mu0 + tau_mu * mu_raw
+
+  log_scale <- mu[site_id] + beta1 * X1 + beta2 * X2
+  sigma <- exp(log_scale)
+
+  pi <- plogis(gamma + delta1 * P1)
+
+  # ---- SIMULATE ----
+  fw_score_weighted <- numeric(N)
+
+  for (n in 1:N) {
+    if (runif(1) < pi[n]) {
+      fw_score_weighted[n] <- 0
+    } else {
+      fw_score_weighted[n] <- rweibull(1, alpha, sigma[n])
+    }
+  }
+
+  all_sims[[i]] <- tibble(
+    sim_id = i,
+    fw_score_weighted,
+    zero = fw_score_weighted == 0
+  )
+}
+
+sim_df <- bind_rows(all_sims)
+```
+
+
+```{r}
+# Histograms
+ggplot(filter(sim_df, sim_id <= 8), aes(x = fw_score_weighted)) +
+  geom_histogram(bins = 100, fill = "steelblue", alpha = 0.6) +
+  facet_wrap(~ sim_id, scales = "free_x") +
+  theme_minimal()
+
+ggplot(
+  filter(sim_df, sim_id <= 8, fw_score_weighted > 0),
+  aes(x = fw_score_weighted)
+) +
+  geom_histogram(bins = 100, fill = "steelblue", alpha = 0.6) +
+  facet_wrap(~ sim_id, scales = "free_x") +
+  theme_minimal() +
+  labs(
+    x = "FW score (non-zero only)",
+    y = "Count"
+  )
+
+# Zero proportion
+sim_df %>%
+  group_by(sim_id) %>%
+  summarise(p_zero = mean(zero)) %>%
+  ggplot(aes(sim_id, p_zero)) +
+  geom_col(fill = "firebrick") +
+  theme_minimal()
+
+# Positive-only summaries 
+sim_df %>%
+  filter(fw_score_weighted > 0) %>%
+  group_by(sim_id) %>%
+  summarise(
+    mean = mean(fw_score_weighted),
+    sd = sd(fw_score_weighted),
+    max = max(fw_score_weighted)
+  )
+
+mean(sim_df$fw_score_weighted > 0)
+```
+
+
+```{r}
+obs_zero_rate <- mean(dat_final$fw_score_weighted == 0)
+
+obs_pos <- dat_final$fw_score_weighted[dat_final$fw_score_weighted > 0]
+```
+
+
+```{r}
+p1 <- ggplot(filter(sim_df, sim_id <= 4),
+             aes(x = fw_score_weighted)) +
+  geom_histogram(bins = 100, fill = "steelblue", alpha = 0.7) +
+  facet_wrap(~ sim_id, scales = "free_x") +
+  theme_minimal(base_size = 11) +
+  labs(
+    x = "Food waste score",
+    y = "Count"
+  )
+
+zero_df <- sim_df %>%
+  group_by(sim_id) %>%
+  summarise(p_zero = mean(fw_score_weighted == 0))
+
+p2 <- ggplot(zero_df, aes(x = p_zero)) +
+  geom_histogram(bins = 40, fill = "firebrick", alpha = 0.8) +
+  geom_vline(xintercept = obs_zero_rate,
+             linetype = "dashed",
+             linewidth = 1) +
+  theme_minimal(base_size = 11) +
+  labs(
+    x = "Proportion of zeros (simulation)",
+    y = "Count"
+  )
+
+
+p3 <- ggplot(
+  filter(sim_df, sim_id <= 4, fw_score_weighted > 0),
+  aes(x = fw_score_weighted)
+) +
+  geom_histogram(bins = 100, fill = "darkgreen", alpha = 0.7) +
+  facet_wrap(~ sim_id, scales = "free_x") +
+  theme_minimal(base_size = 11) +
+  labs(
+    x = "Positive food waste score",
+    y = "Count"
+  )
+
+
+S1 <- (p1 / p2 / p3) +
+  plot_annotation(
+    tag_levels = "a",
+    tag_suffix = ")"
+  ) 
+
+ggsave(
+  filename = here("figs", "FigureS5.pdf"),
+  plot = S1,
+  width = 6,
+  height = 8,
+  device = pdf  
+)
+
+```
+
+
+##### Figure S6
+
+```{r}
+
+#load(here("data","fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata")))
+# Extract samples
+posterior <- rstan::extract(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)
+
+# Extract posterior samples
+y_rep <- posterior$fw_score_pred  # Change "y_rep" based on how you named your predicted values
+pi_pred <- posterior$pi # Change "y_rep" based on how you named your predicted values
+y_obs <- dat_no_ub$fw_score_weighted  # Replace with actual observed data
+pi_obs <- ifelse(dat_no_ub$fw_score_weighted > 0 , 0, 1)  # Convert to binary presence/absence
+# Flatten it first (if you want to look across all draws)
+y_rep_pos <- as.vector(y_rep)
+y_rep_pos <- y_rep_pos[y_rep_pos > 0]
+
+
+
+# Explore distributions
+hist(posterior$mu0, breaks = 40, main = "mu", col = "skyblue")
+hist(posterior$tau_mu, breaks = 40, main = "tau_mu", col = "skyblue")
+hist(posterior$mu_raw, breaks = 40, main = "mu_raw", col = "skyblue")
+hist(posterior$alpha, breaks = 40, main = "alpha", col = "salmon")
+hist(posterior$log_scale, breaks = 40, main = "log_scale", col = "salmon")
+hist(posterior$sigma, breaks = 40, main = "sigma", col = "salmon")
+hist(posterior$beta1, breaks = 40, main = "beta1", col = "pink")
+hist(posterior$beta2, breaks = 40, main = "beta2", col = "purple")
+hist(posterior$gamma, breaks = 40, main = "gamma", col = "yellow")
+hist(posterior$delta1, breaks = 40, main = "delta1", col = "orange")
+
+
+set.seed(123)  # for reproducibility
+# sample_rows <- sample(1:nrow(y_rep), 50)  # randomly pick 50 rows
+# 
+# 
+# ppc_dens_overlay(y_obs, y_rep[sample_rows,])  # Plot overlay of observed vs simulated densities
+# 
+# 
+# # Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+# ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+#   xlim(0.000001,6) +
+#   labs(title = "Posterior Predictive Check (X Range: 0 to 1)",
+#        x = "Food Waste Score",
+#        y = "Density") +
+#   theme_minimal()
+# 
+
+
+# Draw subset of posterior predictive simulations
+sample_rows <- sample(nrow(y_rep), 50)
+
+base_theme <- theme_minimal() +
+  theme(
+    axis.title.x = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+
+# Create a separate plot solely for extracting the legend
+legend_plot <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+shared_legend <- get_legend(legend_plot)
+
+
+# Panel A: full range
+p1 <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  labs(
+    title = "Full Range",
+    x = "",
+    y = "Density"
+  ) +
+  base_theme
+
+# Panel B: zoom to 0-10
+p2 <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  xlim(0.000001,10) +
+  labs(
+    title = "Zoom: >0–10",
+    x = "",
+    y = ""
+  )  +
+  base_theme
+
+# Panel C: zoom near zero
+p3 <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  coord_cartesian(xlim = c(-0.01, 1)) +
+  labs(
+    title = "Zoom: 0–1",
+    x = "",
+    y = ""
+  ) +
+  base_theme
+
+
+# Combine panels
+panel_row <- plot_grid(
+  p1, p2, p3,
+  labels = c("a", "b", "c"),
+  ncol = 3,
+  align = "hv",
+  axis = "tblr",
+  label_size = 16
+)
+
+# Shared x-axis
+x_label <- ggdraw() +
+  draw_label(
+    "Food Waste Score",
+    size = 14
+  )
+
+# Panels + x-axis
+main_plot <- plot_grid(
+  panel_row,
+  x_label,
+  ncol = 1,
+  rel_heights = c(1, 0.08)
+)
+
+# Add legend on the right
+plot_grid(
+  main_plot,
+  shared_legend,
+  ncol = 2,
+  rel_widths = c(1, 0.15)
+)
+
+
+final_plot <- plot_grid(
+  main_plot,
+  shared_legend,
+  ncol = 2,
+  rel_widths = c(1, 0.12)
+)
+
+# Display
+print(final_plot)
+
+# Save wide version
+ggsave(
+  here("figs","FigureS6.png"),
+  final_plot,
+  width = 12,
+  height = 4,
+  dpi = 300
+)
+
+
+
+
+
+
+
+# Convert posterior predictive samples to a long format
+pi_pred_df <- as.data.frame(pi_pred)
+pi_pred_long <- pi_pred_df %>%
+  pivot_longer(cols = everything(), names_to = "Iteration", values_to = "pi_pred")
+# Calculate the mean of pi_obs
+mean_pi_obs <- mean(pi_obs, na.rm = TRUE)
+
+# Create the plot
+ggplot(pi_pred_long, aes(x = pi_pred)) +
+  geom_histogram(binwidth = 0.005, fill = "lightblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = mean_pi_obs, color = "red", linetype = "dashed", linewidth = 1) +  # Add red vertical line
+  labs(title = "Posterior Predictive Check for pi",
+       x = "Predicted pi",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+```{r}
+
+load(file = here("data", "van_dat_final_750.Rdata"))
+
+# Define output file name and resolution
+pdf(here("figs","FigureS7.pdf"), width = 12, height = 8)  # Adjust size as needed
+
+ggplot(van_dat) +
+  geom_sf(aes(fill = Factor1_wins), color = NA) +  # No borders for a smooth heatmap
+  scale_fill_viridis_c(option = "inferno", name = "Value") + #, limits = c(0.0000001, 0.5)) +  # "inferno" for bright-darker range
+  theme_minimal() +
+  theme(panel.grid = element_blank())  # Remove grid lines for a cleaner look
+
+# Close the PDF device to save the file
+dev.off()
+```
+
+#### Figure S8
+
+```{r}
+
+# Define output file name and resolution
+pdf(here("figs","FigureS8.pdf"), width = 12, height = 8)  # Adjust size as needed
+
+ggplot(van_dat) +
+  geom_sf(aes(fill = Factor3_wins), color = NA) +  # No borders for a smooth heatmap
+  scale_fill_viridis_c(option = "inferno", name = "Value") + #, limits = c(0.0000001, 0.5)) +  # "inferno" for bright-darker range
+  theme_minimal() +
+  theme(panel.grid = element_blank())  # Remove grid lines for a cleaner look
+
+# Close the PDF device to save the file
+dev.off()
+```
+
+
+#### Figure S9
+
+```{r}
+library(sf)
+
+#load(file = here("data", "van_dat_final_750_2.Rdata"))
+
+load(file = here("data", "van_dat_demo_lc_retail_shelters_roads_mods_750.Rdata"))
+
+# Load site polygons
+load(here("data", "sites_3857.Rdata"))
+sites_3857 <- sites_3857[-c(8),]  # Remove one site if needed
+
+
+
+# Site labels (must match order in sites_matched)
+site_labels <- c(
+  "Collingwood", "McKenzie", "Shaugnessy", "Queen Elizabeth",
+  "False Creek", "Downtown", "West End", "43 & Churchill",
+  "14 & Spruce", "19 & Yukon", "Strathcona", "2nd Beach"
+)
+
+# Get site centroids
+site_centroids <- st_centroid(sites_3857)
+label_coords <- st_coordinates(site_centroids)
+
+# ---- AUTO-NUDGE: Spread labels based on position ----
+
+# bottom of map (y-axis)
+bottom_y <- min(label_coords[,2]) - 500  # 500 m below the lowest site
+center_x <- mean(label_coords[,1])       # horizontally centered
+
+# new center for label push
+label_center <- c(center_x, bottom_y)
+
+# direction vectors
+dx <- label_coords[,1] - label_center[1]
+dy <- label_coords[,2] - label_center[2]
+
+# normalize
+dist <- sqrt(dx^2 + dy^2)
+dx_norm <- dx / dist
+dy_norm <- dy / dist
+
+# simple, consistent push
+push_dist <- 1000   # <- tune this (200–500 is the sweet spot)
+
+label_coords_offset <- label_coords
+label_coords_offset[,1] <- label_coords[,1] + dx_norm * push_dist
+label_coords_offset[,2] <- label_coords[,2] + dy_norm * push_dist
+# find indices
+i_col <- which(site_labels == "Collingwood")
+i_mck <- which(site_labels == "McKenzie")
+
+# vertical separation (strong + clean)
+label_coords_offset[i_col,2] <- label_coords_offset[i_col,2] + 120
+label_coords_offset[i_mck,2] <- label_coords_offset[i_mck,2] + 300
+
+label_coords_offset[i_col,1] <- label_coords_offset[i_col,1] - 120
+label_coords_offset[i_mck,1] <- label_coords_offset[i_mck,1] + 300
+
+# Convert to data frame and attach labels
+label_df <- as.data.frame(label_coords_offset)
+colnames(label_df) <- c("X", "Y")
+label_df$label <- site_labels
+
+# Offsets for 8-direction outline
+offsets <- expand.grid(dx = c(-0.5, 0, 0.5),
+                       dy = c(-0.5, 0, 0.5))
+offsets <- offsets[!(offsets$dx == 0 & offsets$dy == 0), ]
+
+# Duplicate label data for outline
+outline_df <- do.call(rbind, lapply(1:nrow(offsets), function(i) {
+  transform(label_df,
+            X = X + offsets$dx[i],
+            Y = Y + offsets$dy[i])
+}))
+
+
+# Define output file name and resolution
+pdf(here("figs","FigureS9.pdf"), width = 10, height = 8)
+
+ggplot() +
+  # Base raster/grid layer
+  geom_sf(data = van_dat, aes(fill = housing_highdensity), color = NA) +
+
+  # Site polygons
+  geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.75) +
+  geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.75) +
+# Outline
+geom_text(
+  data = outline_df,
+  aes(x = X, y = Y, label = label),
+  size = 4.1,
+  fontface = "bold",
+  color = "black"
+) +
+
+# Foreground
+geom_text(
+  data = label_df,
+  aes(x = X, y = Y, label = label),
+  size = 4,
+  fontface = "bold",
+  color = "white"
+)+
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "High-density \nHousing"
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 10)
+  )
+
+dev.off()
+```
+
+#### Figure S10
+
+```{r}
+# Define output file name and resolution
+pdf(here("figs","FigureS10.pdf"), width = 10, height = 8)
+
+ggplot() +
+  # Base raster/grid layer
+  geom_sf(data = van_dat, aes(fill = housing_lowdensity), color = NA) +
+
+  # Site polygons
+  geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.75) +
+  geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.75) +
+# Outline
+geom_text(
+  data = outline_df,
+  aes(x = X, y = Y, label = label),
+  size = 4.1,
+  fontface = "bold",
+  color = "black"
+) +
+
+# Foreground
+geom_text(
+  data = label_df,
+  aes(x = X, y = Y, label = label),
+  size = 4,
+  fontface = "bold",
+  color = "white"
+)+
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "Low-density \nHousing"
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 10)
+  )
+
+dev.off()
+```
+
+#### Figure S11
+
+```{r}
+# Define output file name and resolution
+pdf(here("figs","FigureS11.pdf"), width = 10, height = 8)
+
+ggplot() +
+  # Base raster/grid layer
+  geom_sf(data = van_dat, aes(fill = rent_pct * 100), color = NA) +
+
+  # Site polygons
+  geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.75) +
+  geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.75) +
+# Outline
+geom_text(
+  data = outline_df,
+  aes(x = X, y = Y, label = label),
+  size = 4.1,
+  fontface = "bold",
+  color = "black"
+) +
+
+# Foreground
+geom_text(
+  data = label_df,
+  aes(x = X, y = Y, label = label),
+  size = 4,
+  fontface = "bold",
+  color = "white"
+)+
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "% renters"
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 10)
+  )
+
+dev.off()
+```
+
+#### Figure S12
+
+```{r}
+# Define output file name and resolution
+pdf(here("figs","FigureS12.pdf"), width = 10, height = 8)
+
+ggplot() +
+  # Base raster/grid layer
+  geom_sf(data = van_dat, aes(fill = household_income), color = NA) +
+
+  # Site polygons
+  geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.75) +
+  geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.75) +
+# Outline
+geom_text(
+  data = outline_df,
+  aes(x = X, y = Y, label = label),
+  size = 4.1,
+  fontface = "bold",
+  color = "black"
+) +
+
+# Foreground
+geom_text(
+  data = label_df,
+  aes(x = X, y = Y, label = label),
+  size = 4,
+  fontface = "bold",
+  color = "white"
+)+
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "median \nhousehold income"
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 10)
+  )
+
+dev.off()
+```
+
+
+### Figure S13: Material deprivation score
+
+```{r}
+# Define output file name and resolution
+pdf(here("figs","FigureS13.pdf"), width = 10, height = 8)
+
+ggplot() +
+  # Base raster/grid layer
+  geom_sf(data = van_dat, aes(fill = SCOREMAT), color = NA) +
+
+  # Site polygons
+  geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.75) +
+  geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.75) +
+# Outline
+geom_text(
+  data = outline_df,
+  aes(x = X, y = Y, label = label),
+  size = 4.1,
+  fontface = "bold",
+  color = "black"
+) +
+
+# Foreground
+geom_text(
+  data = label_df,
+  aes(x = X, y = Y, label = label),
+  size = 4,
+  fontface = "bold",
+  color = "white"
+)+
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "Material Deprivation \nIndex"
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 10)
+  )
+
+dev.off()
+```
+
+
+#### Figure S14: Social deprivation score
+
+```{r}
+# Define output file name and resolution
+pdf(here("figs","FigureS14.pdf"), width = 10, height = 8)
+
+ggplot() +
+  # Base raster/grid layer
+  geom_sf(data = van_dat, aes(fill = SCORESOC), color = NA) +
+
+  # Site polygons
+  geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.75) +
+  geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.75) +
+# Outline
+geom_text(
+  data = outline_df,
+  aes(x = X, y = Y, label = label),
+  size = 4.1,
+  fontface = "bold",
+  color = "black"
+) +
+
+# Foreground
+geom_text(
+  data = label_df,
+  aes(x = X, y = Y, label = label),
+  size = 4,
+  fontface = "bold",
+  color = "white"
+)+
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "Social Deprivation \nIndex"
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 10)
+  )
+
+dev.off()
+```
+
+#### Figure S15: posterior predictive checks of the proxy (Tweedie) model
+```{r}
+
+load( file = here("data","fit_hier_1pred_tweedie.Rdata"))
+# Extract samples
+posterior <- rstan::extract(fit_hier_1pred_tweedie)
+
+# Extract posterior samples
+y_rep <- posterior$y_rep  # Change "y_rep" based on how you named your predicted values
+y_obs <- dat_no_ub$fw_score_weighted  # Replace with actual observed data
+pi_obs <- ifelse(dat_no_ub$fw_score_weighted > 0 , 0, 1)  # Convert to binary presence/absence
+# Flatten it first (if you want to look across all draws)
+y_rep_pos <- as.vector(y_rep)
+y_rep_pos <- y_rep_pos[y_rep_pos > 0]
+
+
+
+# Explore distributions
+hist(posterior$mu, breaks = 40, main = "mu", col = "skyblue")
+hist(posterior$phi, breaks = 40, main = "alpha", col = "salmon")
+hist(posterior$p, breaks = 40, main = "log_scale", col = "salmon")
+hist(posterior$lambda, breaks = 40, main = "sigma", col = "salmon")
+hist(posterior$eta, breaks = 40, main = "sigma", col = "salmon")
+hist(posterior$beta1, breaks = 40, main = "beta1", col = "pink")
+
+set.seed(123)  # for reproducibility
+sample_rows <- sample(1:nrow(y_rep), 50)  # randomly pick 50 rows
+
+
+# ppc_dens_overlay(y_obs, y_rep[sample_rows,])  # Plot overlay of observed vs simulated densities
+# 
+# 
+# 
+# # Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+# ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+#  # xlim(0.000001,10) +
+#   labs(title = "Posterior Predictive Check (Full Range)",
+#        x = "Food Waste Score",
+#        y = "Density") +
+#   theme_minimal()
+# 
+# 
+# # Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+# ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+#   xlim(0.000001,10) +
+#   labs(title = "Posterior Predictive Check (X Range: >0 to 10)",
+#        x = "Food Waste Score",
+#        y = "Density") +
+#   theme_minimal()
+# 
+# 
+# # Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+# ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+#   xlim(-0.01,1) +
+#   labs(title = "Posterior Predictive Check (X Range: 0 to 2.5)",
+#        x = "Food Waste Score",
+#        y = "Density") +
+#   theme_minimal()
+
+# Draw subset of posterior predictive simulations
+sample_rows <- sample(nrow(y_rep), 50)
+
+base_theme <- theme_minimal() +
+  theme(
+    axis.title.x = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+
+# Create a separate plot solely for extracting the legend
+legend_plot <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+shared_legend <- get_legend(legend_plot)
+
+
+# Panel A: full range
+p1 <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  labs(
+    title = "Full Range",
+    x = "",
+    y = "Density"
+  ) +
+  base_theme
+
+# Panel B: zoom to 0-10
+p2 <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  xlim(0.000001,10) +
+  labs(
+    title = "Zoom: >0–10",
+    x = "",
+    y = ""
+  )  +
+  base_theme
+
+# Panel C: zoom near zero
+p3 <- ppc_dens_overlay(
+  y_obs,
+  y_rep[sample_rows, ]
+) +
+  coord_cartesian(xlim = c(-0.01, 1)) +
+  labs(
+    title = "Zoom: 0–1",
+    x = "",
+    y = ""
+  ) +
+  base_theme
+
+
+# Combine panels
+panel_row <- plot_grid(
+  p1, p2, p3,
+  labels = c("a", "b", "c"),
+  ncol = 3,
+  align = "hv",
+  axis = "tblr",
+  label_size = 16
+)
+
+# Shared x-axis
+x_label <- ggdraw() +
+  draw_label(
+    "Food Waste Score",
+    size = 14
+  )
+
+# Panels + x-axis
+main_plot <- plot_grid(
+  panel_row,
+  x_label,
+  ncol = 1,
+  rel_heights = c(1, 0.08)
+)
+
+# Add legend on the right
+plot_grid(
+  main_plot,
+  shared_legend,
+  ncol = 2,
+  rel_widths = c(1, 0.15)
+)
+
+
+final_plot <- plot_grid(
+  main_plot,
+  shared_legend,
+  ncol = 2,
+  rel_widths = c(1, 0.12)
+)
+
+# Display
+print(final_plot)
+
+# Save wide version
+ggsave(
+  here("figs","FigureS15.png"),
+  final_plot,
+  width = 12,
+  height = 4,
+  dpi = 300
+)
+
+```
+
+

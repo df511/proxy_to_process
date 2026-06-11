@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="1h6RJ3xUq4zXqWL_aKSDCOzqUeA6Dpg_S">
+	<name>2nd_beach_edits</name>
+	<gx:CascadingStyle kml:id="__managed_style_7F724D2DB0379F642910">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff0000ff</color>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_665EB87AB2379F642910">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_7F724D2DB0379F642910</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_819F06DE87379F642910</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_272A1848B1379F64290F">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_154AA2269C379F64290F">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_819F06DE87379F642910">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff0000ff</color>
+				<width>1.5</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0FDCD8B8B6379F64290F">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_154AA2269C379F64290F</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_272A1848B1379F64290F</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Folder id="547D13823C000001">
+		<name>2nd_beach.kml</name>
+		<open>1</open>
+		<styleUrl>#__managed_style_0FDCD8B8B6379F64290F</styleUrl>
+		<Placemark id="547D13823C000002">
+			<name>2nd_beach</name>
+			<styleUrl>#__managed_style_665EB87AB2379F642910</styleUrl>
+			<Polygon>
+				<outerBoundaryIs>
+					<LinearRing>
+						<coordinates>
+							-123.1496512975204,49.29292038310512,0 -123.1495499525253,49.29367534406714,0 -123.147763094159,49.29433421724911,0 -123.1457501928266,49.29546761982533,0 -123.1466657349497,49.29622558903888,0 -123.1507090718623,49.29667533304847,0 -123.1514299634915,49.29603485440842,0 -123.1512025363586,49.29526100899884,0 -123.1507589171633,49.29501073177865,0 -123.1504432333228,49.29463414784517,0 -123.150255759605,49.29407572552596,0 -123.1502203264716,49.29358603779963,0 -123.1502796681065,49.29301863867197,0 -123.1498459463241,49.29241555958817,0 -123.1492778553314,49.29191218499917,0 -123.1488306311696,49.29208904029158,0 -123.1496512975204,49.29292038310512,0 
+						</coordinates>
+					</LinearRing>
+				</outerBoundaryIs>
+			</Polygon>
+		</Placemark>
+	</Folder>
+</Document>
+</kml>

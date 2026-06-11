@@ -1,0 +1,13 @@
+site,site_area_m2,area_km2,survey_distance_km,Distance (km)
+lancaster_cw,80000,0.08,2.14,2.14
+lancaster_dt,90000,0.09,1.51,1.51 (hard to make longer without significant overlap)
+lancaster_fc,90000,0.09,2.41,2.41
+lancaster_mk,180000,0.18,2.48,2.48
+lancaster_qe,80000,0.08,2.01,2.01
+lancaster_sh,90000,0.09,1.97,1.97
+lancaster_we,80000,0.08,2.13,2.13
+14_spruce,160000,0.16,3.94,3.94
+19_yukon,180000,0.18,4.3,4.3
+43_church,170000,0.17,1.68,1.68 (East to West) 3.769 (North to South)
+Strathcona,,,2.47,2.47
+Strathcona2,,,2.38,2.38

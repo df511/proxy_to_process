@@ -1,0 +1,428 @@
+---
+title: "final_stan_models"
+author: "Daniel Forrest"
+date: '2025-05-27'
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+## Started April 29, 2025
+## by Daniel Forrest ##
+
+rm(list=ls()) 
+options(stringsAsFactors = FALSE)
+options(mc.cores = parallel::detectCores())
+```
+
+
+
+```{r}
+## load libraries
+library(tidyr)
+library(rstan)
+library(here)
+library(haven)
+library(shinystan)
+library(ggplot2)
+library(fitdistrplus)
+library(pscl)
+library(MASS)
+library(gamlss)
+library(gamlss.data)
+library(purrr)
+library(dplyr)
+library(bayesplot)
+library(stringr)
+here()
+```
+
+
+
+### import empirical data
+```{r}
+# ### read empirical data
+load(file = here("data", "dat_final_750.Rdata"))
+load(file = here("data", "dat_no_ub_750.Rdata"))
+
+# load(file = here("data", "dat_final_750_pickuptype.Rdata"))
+# load(file = here("data", "dat_no_ub_750_pickuptype.Rdata"))
+
+# ### read empirical data
+# load(file = here("data", "dat_final_750_bycollection.Rdata"))
+# load(file = here("data", "dat_no_ub_750_bycollection.Rdata"))
+
+```
+
+
+
+###########
+### Two predictors in ZIW
+#### Index Var
+#### Site Hierarchy
+
+
+
+#### hier ZIW 2pred 1 pred
+```{r}
+# Prepare data for Stan model (no hierarchy)
+stan_data <- list(
+  N = nrow(dat_final),
+  J = 12,
+  site_id = dat_final$site_id,
+  X1 = dat_final$Factor1,
+  X2 = dat_final$Factor3,
+  P1 = dat_final$service_road_weight,
+  fw_score_weighted = dat_no_ub$fw_score_weighted
+)
+```
+
+```{r}
+fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub <- stan(
+  file = here("src","fw_hier_2pred_ZIW_1pred_bern.stan"),  # Path to the Stan model
+  data = stan_data, 
+  chains = 4, 
+  iter = 2000, 
+)
+```
+```{r}
+save(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub, file = here("data","fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata"))
+```
+
+```{r}
+# Extract samples
+posterior <- rstan::extract(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)
+
+# Extract posterior samples
+y_rep <- posterior$fw_score_pred  # Change "y_rep" based on how you named your predicted values
+pi_pred <- posterior$pi # Change "y_rep" based on how you named your predicted values
+y_obs <- dat_no_ub$fw_score_weighted  # Replace with actual observed data
+pi_obs <- ifelse(dat_no_ub$fw_score_weighted > 0 , 0, 1)  # Convert to binary presence/absence
+# Flatten it first (if you want to look across all draws)
+y_rep_pos <- as.vector(y_rep)
+y_rep_pos <- y_rep_pos[y_rep_pos > 0]
+
+
+
+# Explore distributions
+hist(posterior$mu0, breaks = 40, main = "mu", col = "skyblue")
+hist(posterior$tau_mu, breaks = 40, main = "tau_mu", col = "skyblue")
+hist(posterior$mu_raw, breaks = 40, main = "mu_raw", col = "skyblue")
+hist(posterior$alpha, breaks = 40, main = "alpha", col = "salmon")
+hist(posterior$log_scale, breaks = 40, main = "log_scale", col = "salmon")
+hist(posterior$sigma, breaks = 40, main = "sigma", col = "salmon")
+hist(posterior$beta1, breaks = 40, main = "beta1", col = "pink")
+hist(posterior$beta2, breaks = 40, main = "beta2", col = "purple")
+hist(posterior$gamma, breaks = 40, main = "gamma", col = "yellow")
+hist(posterior$delta1, breaks = 40, main = "delta1", col = "orange")
+
+
+set.seed(123)  # for reproducibility
+sample_rows <- sample(1:nrow(y_rep), 50)  # randomly pick 50 rows
+
+
+ppc_dens_overlay(y_obs, y_rep[sample_rows,])  # Plot overlay of observed vs simulated densities
+
+
+# Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+  xlim(0.000001,6) +
+  labs(title = "Posterior Predictive Check (X Range: 0 to 1)",
+       x = "Food Waste Score",
+       y = "Density") +
+  theme_minimal()
+
+
+# Convert posterior predictive samples to a long format
+pi_pred_df <- as.data.frame(pi_pred)
+pi_pred_long <- pi_pred_df %>%
+  pivot_longer(cols = everything(), names_to = "Iteration", values_to = "pi_pred")
+# Calculate the mean of pi_obs
+mean_pi_obs <- mean(pi_obs, na.rm = TRUE)
+
+# Create the plot
+ggplot(pi_pred_long, aes(x = pi_pred)) +
+  geom_histogram(binwidth = 0.005, fill = "lightblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = mean_pi_obs, color = "red", linetype = "dashed", linewidth = 1) +  # Add red vertical line
+  labs(title = "Posterior Predictive Check for pi",
+       x = "Predicted pi",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+```{r}
+# Subset observed values to > 0
+y_obs_nonzero <- y_obs[y_obs > 0]
+
+# Subset simulated values to > 0 for each draw
+y_rep_nonzero <- y_rep[, y_obs > 0]
+
+length(y_obs_nonzero) == ncol(y_rep_nonzero)  # Should be TRUE
+
+sample_rows <- sample(1:nrow(y_rep_nonzero), 100)
+
+ppc_dens_overlay(y_obs_nonzero, y_rep_nonzero[sample_rows, ]) +
+  xlim(0.00000001, max(y_rep)) +
+  labs(title = "Posterior Predictive Check (Positive Values Only)",
+       x = "Food Waste Score",
+       y = "Density") +
+  theme_minimal()
+
+```
+
+```{r}
+summary(y_rep[1:18160000])
+summary(dat_no_ub$fw_score_weighted)
+summary(y_obs)
+summary(pi_obs)
+summary(pi_pred[1:18160000])
+summary(y_rep_pos)
+```
+
+
+
+```{r}
+mean_observed <- mean(y_obs)
+mean_simulated <- apply(y_rep, 1, mean)
+hist(mean_simulated, probability = TRUE, main = "Posterior Predictive Means",breaks = 40)
+abline(v = mean_observed, col = "blue", lwd = 2)
+```
+```{r}
+# Convert y_rep to data frame and add draw number
+y_rep_df <- as.data.frame(y_rep) %>%
+  mutate(draw = row_number())
+
+site_id <- dat_final$site_id # Or however it's stored in your data
+
+site_legend <- data.frame(
+  site = dat_final$site,
+  site_id = dat_final$site_id
+)
+
+site_legend_unique <- unique(site_legend)
+#site_legend_unique <- site_legend_unique[order(site_legend_unique$site_id), ]
+
+
+# Pivot to long format
+y_rep_long <- y_rep_df %>%
+  tidyr::pivot_longer(-draw, names_to = "obs", values_to = "y") %>%
+  mutate(obs = as.integer(str_remove(obs, "^V")),
+         site = site_id[obs])
+
+site_means <- y_rep_long %>%
+  group_by(draw, site) %>%
+  summarise(mean_y = mean(y), .groups = "drop")
+
+# ggplot(site_means, aes(x = factor(site), y = mean_y)) +
+#   geom_boxplot(fill = "skyblue", alpha = 0.7) +
+#   labs(title = "Posterior Predictive Means per Site",
+#        x = "Site",
+#        y = "Mean Predicted Food Waste") +
+#   theme_minimal()
+# 
+# 
+# ggplot(site_means, aes(x = factor(site), y = mean_y)) +
+#   geom_boxplot(fill = "skyblue", alpha = 0.7) +
+#   scale_x_discrete(
+#     labels = site_legend_unique$site
+#   ) +
+#   labs(title = "Posterior Predictive Means per Site",
+#        x = "Site",
+#        y = "Mean Predicted Food Waste") +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Optional for readability
+
+
+# Compute overall means per site to reorder
+site_order <- site_means %>%
+  group_by(site) %>%
+  summarise(overall_mean = mean(mean_y), .groups = "drop") %>%
+  arrange(desc(overall_mean)) %>%  # Order in descending order
+  mutate(site = factor(site, levels = site))  # ensures the order is preserved
+
+# Join ordered factor levels to site_means
+site_means <- site_means %>%
+  mutate(site = factor(site, levels = site_order$site))
+
+# Make sure site_legend_unique has the correct order
+site_legend_unique <- site_legend_unique %>%
+  mutate(site_id = as.integer(site_id)) %>%
+  arrange(match(site_id, levels(site_means$site)))
+
+# Plot with violin and mean line
+ggplot(site_means, aes(x = site, y = mean_y)) +
+  geom_violin(fill = "skyblue", alpha = 0.7, scale = "width", trim = FALSE) +
+  #stat_summary(fun = mean, geom = "point", shape = 3, size = 6, linewidth = 2, color = "darkorange") +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "red") +
+  scale_x_discrete(labels = site_legend_unique$site) +
+  labs(
+    title = "Posterior Predictive Means per Site (Ordered by Mean)",
+    x = "Site",
+    y = "Mean Predicted Food Waste"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+######### Straw Man Model 
+### (replicating conception of food waste in Brown et al. 2022)
+### They used only restaurants in their model, so we use on "Distance to Food Retail" variable in our model as analogue
+
+
+#### hier 1 pred Tweedie
+```{r}
+# Prepare data for Stan model
+
+stan_data_strawman <- list(
+  N = nrow(dat_final),
+  J = length(unique(dat_final$site_id)),
+  site_id = dat_final$site_id,
+  X1 = dat_final$nearest_food_retail,
+  fw_score_weighted = dat_no_ub$fw_score_weighted
+)
+```
+
+```{r}
+fit_hier_1pred_tweedie <- stan(
+  file = here("src", "fw_hier_1pred_tweedie.stan"),
+  data = stan_data_strawman,
+  chains = 4,
+  iter = 2000
+)
+```
+
+
+```{r}
+save(fit_hier_1pred_tweedie, file = here("data","fit_hier_1pred_tweedie.Rdata"))
+```
+
+
+```{r}
+load( file = here("data","fit_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata"))
+# Extract samples
+posterior <- rstan::extract(fit_hier_1pred_tweedie)
+
+# Extract posterior samples
+y_rep <- posterior$y_rep  # Change "y_rep" based on how you named your predicted values
+y_obs <- dat_no_ub$fw_score_weighted  # Replace with actual observed data
+pi_obs <- ifelse(dat_no_ub$fw_score_weighted > 0 , 0, 1)  # Convert to binary presence/absence
+# Flatten it first (if you want to look across all draws)
+y_rep_pos <- as.vector(y_rep)
+y_rep_pos <- y_rep_pos[y_rep_pos > 0]
+
+
+
+# Explore distributions
+hist(posterior$mu, breaks = 40, main = "mu", col = "skyblue")
+hist(posterior$phi, breaks = 40, main = "alpha", col = "salmon")
+hist(posterior$p, breaks = 40, main = "log_scale", col = "salmon")
+hist(posterior$lambda, breaks = 40, main = "sigma", col = "salmon")
+hist(posterior$eta, breaks = 40, main = "sigma", col = "salmon")
+hist(posterior$beta1, breaks = 40, main = "beta1", col = "pink")
+
+set.seed(123)  # for reproducibility
+sample_rows <- sample(1:nrow(y_rep), 50)  # randomly pick 50 rows
+
+
+ppc_dens_overlay(y_obs, y_rep[sample_rows,])  # Plot overlay of observed vs simulated densities
+
+
+# Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+  xlim(0.000001,10) +
+  labs(title = "Posterior Predictive Check (X Range: >0 to 10)",
+       x = "Food Waste Score",
+       y = "Density") +
+  theme_minimal()
+
+
+
+# Plot overlay of observed vs simulated densities with x-axis range 0 to 4
+ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
+  xlim(-0.01,2.5) +
+  labs(title = "Posterior Predictive Check (X Range: 0 to 2.5)",
+       x = "Food Waste Score",
+       y = "Density") +
+  theme_minimal()
+
+
+
+# # Convert posterior predictive samples to a long format
+# pi_pred_df <- as.data.frame(pi_pred)
+# pi_pred_long <- pi_pred_df %>%
+#   pivot_longer(cols = everything(), names_to = "Iteration", values_to = "pi_pred")
+# # Calculate the mean of pi_obs
+# mean_pi_obs <- mean(pi_obs, na.rm = TRUE)
+# 
+# # Create the plot
+# ggplot(pi_pred_long, aes(x = pi_pred)) +
+#   geom_histogram(binwidth = 0.005, fill = "lightblue", color = "black", alpha = 0.7) +
+#   geom_vline(xintercept = mean_pi_obs, color = "red", linetype = "dashed", linewidth = 1) +  # Add red vertical line
+#   labs(title = "Posterior Predictive Check for pi",
+#        x = "Predicted pi",
+#        y = "Frequency") +
+#   theme_minimal()
+```
+
+
+### LOO comparison of main model vs. straw man
+```{r}
+
+
+library(loo)
+
+log_lik_ziw <- extract_log_lik(
+  fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub,
+  merge_chains = FALSE
+)
+
+log_lik_tw <- extract_log_lik(
+  fit_hier_1pred_tweedie,
+  merge_chains = FALSE
+)
+
+loo_ziw <- loo(log_lik_ziw)
+loo_tw <- loo(log_lik_tw)
+
+print(loo_ziw)
+
+
+loo_compare(loo_ziw, loo_tw)
+
+
+
+
+```
+
+```{r}
+
+library(ggplot2)
+
+# Extract summary statistics
+summ_tw <- summary(fit_hier_1pred_tweedie)$summary
+
+# Plot Rhat values
+ggplot(as.data.frame(summ_tw), aes(x = reorder(rownames(summ_tw), Rhat), y = Rhat)) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = 1.05, linetype = "dashed", color = "red") +
+  coord_flip() +
+  labs(title = "Rhat Convergence Diagnostics", x = "Parameter", y = "Rhat value")
+
+
+```
+```{r}
+
+# Extract summary statistics
+summ_ziw <- summary(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)$summary
+
+# Plot Rhat values
+ggplot(as.data.frame(summ_ziw), aes(x = reorder(rownames(summ_ziw), Rhat), y = Rhat)) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = 1.05, linetype = "dashed", color = "red") +
+  coord_flip() +
+  labs(title = "Rhat Convergence Diagnostics", x = "Parameter", y = "Rhat value")
+```
+
