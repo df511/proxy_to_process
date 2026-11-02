@@ -38,7 +38,7 @@ library(maps)  # for inset map
 # ----------------------------
 # Load data
 # ----------------------------
-file_path <- here("data", "raw","MetroVan_LCC_2020_final.tif")
+file_path <- here("data", "raw","MetroVan_LCC_2020_Final.tif")
 lcc2020 <- rast(file_path)
 
 load(here("data", "sites_3857.Rdata"))
@@ -278,6 +278,8 @@ predicted_fw_score <- st_sf(
   expected_fw_score = expected_y
 )
 
+#### Saves predicted wildlife-accessible food waste median predictions for use elsewhere
+#saveRDS(predicted_fw_score, here("data/fw_score_median_preds_750m.rds"))
 
 # Map (plot_b) — keep legend, remove axis ticks/labels, shrink margins
 plot_b <- ggplot(predicted_fw_score) +

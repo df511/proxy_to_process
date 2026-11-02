@@ -570,7 +570,7 @@ ggsave(
 
 ```{r}
 
-#load(here("data","fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata")))
+load(here("data", "fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata"))
 # Extract samples
 posterior <- rstan::extract(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)
 
