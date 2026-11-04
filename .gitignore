@@ -98,3 +98,6 @@ data/raw/.DS_Store
 data/fit_hier_1pred_tweedie.Rdata
 data/fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata
 data/raw/MetroVan_LCC_2020_Final.tif
+
+# Refit model outputs (too large for GitHub)
+data/fit_hier_ZIW_16var_*.Rdata
