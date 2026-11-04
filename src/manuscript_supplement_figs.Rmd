@@ -130,170 +130,30 @@ ggsave(
 ```
 
 
-#### Figure S2 Factor Analysis plot ###
+#### Figures S2, S5, S6 and supplementary tables (revised November 2026)
 
-```{r}
-load(file = here("data", "dat_no_ub_scaled_750.Rdata"))
+The main model is now **F123_all**: all three socio-political scales (Housing-tenure—density,
+Deprivation, Disenfranchisement) in both the presence and quantity parts of the zero-inflated
+Weibull model, fit to the corrected 3-factor, 16-variable factor analysis
+(`src/factor_analysis_revision.R`). Scales are oriented so that higher values are the less
+privileged condition; presence effects are on the log-odds of presence.
 
-my_data <- dat_no_ub_scaled %>% dplyr::select(where(is.numeric))
-my_data <- as.data.frame(my_data)
-my_data <- my_data[, colSums(is.na(my_data)) == 0]  # Remove NA columns
+`src/supplement_figures_F123_all.R` writes:
 
+- `figs/FigureS2.pdf`: factor-analysis loading biplots (oriented)
+- `figs/FigureS5.pdf`: prior predictive simulations for F123_all
+- `figs/FigureS6.png`: posterior predictive checks for F123_all
+- `tables/Table_factor_loadings.csv`, `tables/Table_F123_all_coefficients.csv`,
+  `tables/Table_LOO_all_models.csv`, `tables/Table_bins_litter.csv`,
+  `tables/Table_weight_sensitivity.csv`
 
-
-# Define the variables to keep in the heatmap
-selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
-                   "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
-                   "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing")
-
-
-# # Define the variables to keep in the heatmap
-# selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
-#                    "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
-#                    "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing", "v_CA21_386: Average age")
-
-# # Define the variables to keep in the heatmap
-# selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
-#                    "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
-#                    "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing", "elderly_pct")
-
-
-
-
-# Ensure the selected variables exist in the dataset
-selected_vars <- selected_vars[selected_vars %in% colnames(my_data)]
-
-# Subset data to only include selected variables
-my_data_subset <- my_data[, selected_vars]
-
-# Ensure no missing values
-my_data_subset <- na.omit(my_data_subset)
-
-# Compute eigenvalues of the correlation matrix
-eigen_vals <- eigen(cor(my_data_subset))$values
-
-# Scree plot
-plot(eigen_vals, type = "b", pch = 19,
-     main = "Scree Plot",
-     xlab = "Factor Number", ylab = "Eigenvalue")
-abline(h = 1, col = "red", lty = 2)  # Kaiser criterion line
-
-
-# Set number of factors to extract
-## due to Kaiser Criterion: https://psycnet.apa.org/fulltext/2016-15750-001.html
-num_factors <- 3
-#num_factors <- 4 # for avg age/eldery
-
-# Perform factor analysis
-fa_result <- factanal(my_data_subset, factors = num_factors, rotation = "varimax", scores = "regression")
-
-
-loadings_matrix <- fa_result$loadings  # or fa_model$weights for regression method
-
-
-fa_scores <-as.data.frame(fa_result$scores)
-
-# View summary of the result
-print(fa_result)
-
-# Extract factor loadings
-loadings_df <- data.frame(fa_result$loadings[, 1:num_factors])
-loadings_df$Variable <- rownames(loadings_df)
-loadings_melted <- melt(loadings_df, id.vars = "Variable", variable.name = "Factor", value.name = "Loading")
-
-# Plot factor loadings
-fa_loadings_plot <- ggplot(loadings_melted, aes(x = Variable, y = Loading, fill = Factor)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "Factor Loadings", x = "Variable", y = "Loading") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-print(fa_loadings_plot)
-
-
-
-# Convert to data frame for plotting
-loadings_df <- as.data.frame(unclass(fa_result$loadings))
-loadings_df$Variable <- rownames(loadings_df)
-
-# Reshape to long format manually
-loadings_long <- reshape(loadings_df, 
-                         varying = names(loadings_df)[1:num_factors], 
-                         v.names = "Loading",
-                         timevar = "Factor",
-                         times = paste0("Factor", 1:num_factors),
-                         direction = "long")
-
-# Plot (using base R barplot)
-par(mar = c(10, 4, 4, 2))  # increase bottom margin
-with(loadings_long, {
-  barplot(Loading, names.arg = Variable, las = 2,
-          main = "Factor Loadings", col = as.factor(Factor))
-})
-
-# Extract and scale loadings
-loadings <- fa_result$loadings[, 1:3]
-
-
-# Convert to data frame
-loadings_df <- as.data.frame(loadings)
-loadings_df$Variable <- rownames(loadings_df)
-
-# Optional: scale loadings for visibility
-scale_factor <- 1.5
-loadings_df$Factor1 <- loadings_df[,1] * scale_factor
-loadings_df$Factor2 <- loadings_df[,2] * scale_factor
-loadings_df$Factor3 <- loadings_df[,3] * scale_factor
-#loadings_df$Factor4 <- loadings_df[,4] * scale_factor
-
-# Save plot to PDF
-pdf(here("figs","FA12.pdf"), width = 10, height = 8)
-
-
-# Plot
-ggplot(loadings_df, aes(x = 0, y = 0, xend = Factor1, yend = Factor2)) +
-  geom_segment(arrow = arrow(length = unit(0.2, "cm")), color = "red") +
-  geom_text_repel(aes(x = Factor1, y = Factor2, label = Variable), size = 4) +
-  coord_equal() +
-  xlim(-1.5, 1.5) + ylim(-1.5, 1.5) +
-  labs(title = "Factor Analysis Loadings Biplot",
-       x = "Factor 1", y = "Factor 2") +
-  theme_minimal()
-
-dev.off()
-
-# Save plot to PDF
-pdf(here("figs","FigureS2.pdf"), width = 10, height = 8)
-
-# Plot
-ggplot(loadings_df, aes(x = 0, y = 0, xend = Factor1, yend = Factor3)) +
-  geom_segment(arrow = arrow(length = unit(0.2, "cm")), color = "red") +
-  geom_text_repel(aes(x = Factor1, y = Factor3, label = Variable), size = 4) +
-  coord_equal() +
-  xlim(-1.5, 1.5) + ylim(-1.5, 1.5) +
-  labs(title = "Factor Analysis Loadings Biplot",
-       x = "Housing-tenure—density Scale", y = "Enfranchisement Scale") +
-  theme_minimal()
-
-dev.off()
-
-
-# # Save plot to PDF
-# pdf(here("figs","FA23.pdf"), width = 10, height = 8)
-# 
-# # Plot
-# ggplot(loadings_df, aes(x = 0, y = 0, xend = Factor2, yend = Factor3)) +
-#   geom_segment(arrow = arrow(length = unit(0.2, "cm")), color = "red") +
-#   geom_text_repel(aes(x = Factor2, y = Factor3, label = Variable), size = 4) +
-#   coord_equal() +
-#   xlim(-1.5, 1.5) + ylim(-1.5, 1.5) +
-#   labs(title = "Factor Analysis Loadings Biplot",
-#        x = "Factor 2", y = "Factor 3") +
-#   theme_minimal()
-# 
-# dev.off()
-
+```{r supplement-F123-all}
+source(here("src", "supplement_figures_F123_all.R"), local = new.env())  # own environment: does not overwrite objects used by other chunks
 ```
+
+The previous Figure S2 code (biplot from the superseded factor-analysis run) has been removed;
+see the git history of this file.
+
 
 ##### Figure S3 Weibull demo ####
 
@@ -398,391 +258,34 @@ ggsave(
  
 #### Figure S5
 
-
-
-
-```{r}
-set.seed(1234)
-
-N <- 4540
-J <- 13
-n_sim <- 20
-
-all_sims <- list()
-
-for (i in 1:n_sim) {
-
-  site_id <- sample(1:J, N, replace = TRUE)
-
-  X1 <- runif(N)
-  X2 <- runif(N)
-  P1 <- runif(N)
-
-  # ---- PRIORS (MATCH STAN) ----
-  alpha <- abs(rnorm(1, 0.5, 0.5))
-
-  mu0 <- rnorm(1, 0, 1)
-  tau_mu <- abs(rnorm(1, 0, 1))
-  mu_raw <- rnorm(J, 0, 1)
-
-  beta1 <- rnorm(1, 0, 1)
-  beta2 <- rnorm(1, 0, 1)
-
-  gamma <- rnorm(1, 1, 1)
-  delta1 <- rnorm(1, 0, 1)
-
-  # ---- TRANSFORM ----
-  mu <- mu0 + tau_mu * mu_raw
-
-  log_scale <- mu[site_id] + beta1 * X1 + beta2 * X2
-  sigma <- exp(log_scale)
-
-  pi <- plogis(gamma + delta1 * P1)
-
-  # ---- SIMULATE ----
-  fw_score_weighted <- numeric(N)
-
-  for (n in 1:N) {
-    if (runif(1) < pi[n]) {
-      fw_score_weighted[n] <- 0
-    } else {
-      fw_score_weighted[n] <- rweibull(1, alpha, sigma[n])
-    }
-  }
-
-  all_sims[[i]] <- tibble(
-    sim_id = i,
-    fw_score_weighted,
-    zero = fw_score_weighted == 0
-  )
-}
-
-sim_df <- bind_rows(all_sims)
-```
-
-
-```{r}
-# Histograms
-ggplot(filter(sim_df, sim_id <= 8), aes(x = fw_score_weighted)) +
-  geom_histogram(bins = 100, fill = "steelblue", alpha = 0.6) +
-  facet_wrap(~ sim_id, scales = "free_x") +
-  theme_minimal()
-
-ggplot(
-  filter(sim_df, sim_id <= 8, fw_score_weighted > 0),
-  aes(x = fw_score_weighted)
-) +
-  geom_histogram(bins = 100, fill = "steelblue", alpha = 0.6) +
-  facet_wrap(~ sim_id, scales = "free_x") +
-  theme_minimal() +
-  labs(
-    x = "FW score (non-zero only)",
-    y = "Count"
-  )
-
-# Zero proportion
-sim_df %>%
-  group_by(sim_id) %>%
-  summarise(p_zero = mean(zero)) %>%
-  ggplot(aes(sim_id, p_zero)) +
-  geom_col(fill = "firebrick") +
-  theme_minimal()
-
-# Positive-only summaries 
-sim_df %>%
-  filter(fw_score_weighted > 0) %>%
-  group_by(sim_id) %>%
-  summarise(
-    mean = mean(fw_score_weighted),
-    sd = sd(fw_score_weighted),
-    max = max(fw_score_weighted)
-  )
-
-mean(sim_df$fw_score_weighted > 0)
-```
-
-
-```{r}
-obs_zero_rate <- mean(dat_final$fw_score_weighted == 0)
-
-obs_pos <- dat_final$fw_score_weighted[dat_final$fw_score_weighted > 0]
-```
-
-
-```{r}
-p1 <- ggplot(filter(sim_df, sim_id <= 4),
-             aes(x = fw_score_weighted)) +
-  geom_histogram(bins = 100, fill = "steelblue", alpha = 0.7) +
-  facet_wrap(~ sim_id, scales = "free_x") +
-  theme_minimal(base_size = 11) +
-  labs(
-    x = "Food waste score",
-    y = "Count"
-  )
-
-zero_df <- sim_df %>%
-  group_by(sim_id) %>%
-  summarise(p_zero = mean(fw_score_weighted == 0))
-
-p2 <- ggplot(zero_df, aes(x = p_zero)) +
-  geom_histogram(bins = 40, fill = "firebrick", alpha = 0.8) +
-  geom_vline(xintercept = obs_zero_rate,
-             linetype = "dashed",
-             linewidth = 1) +
-  theme_minimal(base_size = 11) +
-  labs(
-    x = "Proportion of zeros (simulation)",
-    y = "Count"
-  )
-
-
-p3 <- ggplot(
-  filter(sim_df, sim_id <= 4, fw_score_weighted > 0),
-  aes(x = fw_score_weighted)
-) +
-  geom_histogram(bins = 100, fill = "darkgreen", alpha = 0.7) +
-  facet_wrap(~ sim_id, scales = "free_x") +
-  theme_minimal(base_size = 11) +
-  labs(
-    x = "Positive food waste score",
-    y = "Count"
-  )
-
-
-S1 <- (p1 / p2 / p3) +
-  plot_annotation(
-    tag_levels = "a",
-    tag_suffix = ")"
-  ) 
-
-ggsave(
-  filename = here("figs", "FigureS5.pdf"),
-  plot = S1,
-  width = 6,
-  height = 8,
-  device = pdf  
-)
-
-```
-
+Revised: written by `src/supplement_figures_F123_all.R` (chunk `supplement-F123-all` above), as
+prior predictive simulations for F123_all with the observed transect covariates.
 
 ##### Figure S6
 
-```{r}
+Revised: written by `src/supplement_figures_F123_all.R` (chunk `supplement-F123-all` above), as
+posterior predictive checks for F123_all.
 
-load(here("data", "fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub.Rdata"))
-# Extract samples
-posterior <- rstan::extract(fit_hier_ZIW_A_FA1_FA3_B_roadweight_noub)
+#### Figure S7: the three socio-political scales across the City of Vancouver
 
-# Extract posterior samples
-y_rep <- posterior$fw_score_pred  # Change "y_rep" based on how you named your predicted values
-pi_pred <- posterior$pi # Change "y_rep" based on how you named your predicted values
-y_obs <- dat_no_ub$fw_score_weighted  # Replace with actual observed data
-pi_obs <- ifelse(dat_no_ub$fw_score_weighted > 0 , 0, 1)  # Convert to binary presence/absence
-# Flatten it first (if you want to look across all draws)
-y_rep_pos <- as.vector(y_rep)
-y_rep_pos <- y_rep_pos[y_rep_pos > 0]
+Revised: corrected city factor scores (transect regression weights and standardization), oriented
+so that higher values are the less privileged condition, on a shared diverging scale; DAs with
+population density below 650 persons km^-2^ are not shown. Replaces the former S7 and S8
+(maps of the superseded Factor 1 and Factor 3 scores).
 
-
-
-# Explore distributions
-hist(posterior$mu0, breaks = 40, main = "mu", col = "skyblue")
-hist(posterior$tau_mu, breaks = 40, main = "tau_mu", col = "skyblue")
-hist(posterior$mu_raw, breaks = 40, main = "mu_raw", col = "skyblue")
-hist(posterior$alpha, breaks = 40, main = "alpha", col = "salmon")
-hist(posterior$log_scale, breaks = 40, main = "log_scale", col = "salmon")
-hist(posterior$sigma, breaks = 40, main = "sigma", col = "salmon")
-hist(posterior$beta1, breaks = 40, main = "beta1", col = "pink")
-hist(posterior$beta2, breaks = 40, main = "beta2", col = "purple")
-hist(posterior$gamma, breaks = 40, main = "gamma", col = "yellow")
-hist(posterior$delta1, breaks = 40, main = "delta1", col = "orange")
-
-
-set.seed(123)  # for reproducibility
-# sample_rows <- sample(1:nrow(y_rep), 50)  # randomly pick 50 rows
-# 
-# 
-# ppc_dens_overlay(y_obs, y_rep[sample_rows,])  # Plot overlay of observed vs simulated densities
-# 
-# 
-# # Plot overlay of observed vs simulated densities with x-axis range 0 to 4
-# ppc_dens_overlay(y_obs, y_rep[sample_rows, ]) +
-#   xlim(0.000001,6) +
-#   labs(title = "Posterior Predictive Check (X Range: 0 to 1)",
-#        x = "Food Waste Score",
-#        y = "Density") +
-#   theme_minimal()
-# 
-
-
-# Draw subset of posterior predictive simulations
-sample_rows <- sample(nrow(y_rep), 50)
-
-base_theme <- theme_minimal() +
-  theme(
-    axis.title.x = element_blank(),
-    plot.title = element_text(hjust = 0.5),
-    legend.position = "none"
-  )
-
-# Create a separate plot solely for extracting the legend
-legend_plot <- ppc_dens_overlay(
-  y_obs,
-  y_rep[sample_rows, ]
-) +
-  theme_minimal() +
-  theme(legend.position = "right")
-
-shared_legend <- get_legend(legend_plot)
-
-
-# Panel A: full range
-p1 <- ppc_dens_overlay(
-  y_obs,
-  y_rep[sample_rows, ]
-) +
-  labs(
-    title = "Full Range",
-    x = "",
-    y = "Density"
-  ) +
-  base_theme
-
-# Panel B: zoom to 0-10
-p2 <- ppc_dens_overlay(
-  y_obs,
-  y_rep[sample_rows, ]
-) +
-  xlim(0.000001,10) +
-  labs(
-    title = "Zoom: >0–10",
-    x = "",
-    y = ""
-  )  +
-  base_theme
-
-# Panel C: zoom near zero
-p3 <- ppc_dens_overlay(
-  y_obs,
-  y_rep[sample_rows, ]
-) +
-  coord_cartesian(xlim = c(-0.01, 1)) +
-  labs(
-    title = "Zoom: 0–1",
-    x = "",
-    y = ""
-  ) +
-  base_theme
-
-
-# Combine panels
-panel_row <- plot_grid(
-  p1, p2, p3,
-  labels = c("a", "b", "c"),
-  ncol = 3,
-  align = "hv",
-  axis = "tblr",
-  label_size = 16
-)
-
-# Shared x-axis
-x_label <- ggdraw() +
-  draw_label(
-    "Food Waste Score",
-    size = 14
-  )
-
-# Panels + x-axis
-main_plot <- plot_grid(
-  panel_row,
-  x_label,
-  ncol = 1,
-  rel_heights = c(1, 0.08)
-)
-
-# Add legend on the right
-plot_grid(
-  main_plot,
-  shared_legend,
-  ncol = 2,
-  rel_widths = c(1, 0.15)
-)
-
-
-final_plot <- plot_grid(
-  main_plot,
-  shared_legend,
-  ncol = 2,
-  rel_widths = c(1, 0.12)
-)
-
-# Display
-print(final_plot)
-
-# Save wide version
-ggsave(
-  here("figs","FigureS6.png"),
-  final_plot,
-  width = 12,
-  height = 4,
-  dpi = 300
-)
-
-
-
-
-
-
-
-# Convert posterior predictive samples to a long format
-pi_pred_df <- as.data.frame(pi_pred)
-pi_pred_long <- pi_pred_df %>%
-  pivot_longer(cols = everything(), names_to = "Iteration", values_to = "pi_pred")
-# Calculate the mean of pi_obs
-mean_pi_obs <- mean(pi_obs, na.rm = TRUE)
-
-# Create the plot
-ggplot(pi_pred_long, aes(x = pi_pred)) +
-  geom_histogram(binwidth = 0.005, fill = "lightblue", color = "black", alpha = 0.7) +
-  geom_vline(xintercept = mean_pi_obs, color = "red", linetype = "dashed", linewidth = 1) +  # Add red vertical line
-  labs(title = "Posterior Predictive Check for pi",
-       x = "Predicted pi",
-       y = "Frequency") +
-  theme_minimal()
+```{r figure-S7-factor-maps}
+source(here("src", "supplement_factor_maps.R"), local = new.env())  # own environment: does not overwrite objects used by other chunks
+file.copy(here("figs", "FigureS_factor_maps.pdf"), here("figs", "FigureS7.pdf"), overwrite = TRUE)
 ```
 
-```{r}
+#### Figure S8: net effect of each scale on expected food waste
 
-load(file = here("data", "van_dat_final_750.Rdata"))
+Revised: ratio of expected food waste score at +1 SD (towards the less privileged condition) to the
+transect mean, with its presence and quantity components.
 
-# Define output file name and resolution
-pdf(here("figs","FigureS7.pdf"), width = 12, height = 8)  # Adjust size as needed
-
-ggplot(van_dat) +
-  geom_sf(aes(fill = Factor1_wins), color = NA) +  # No borders for a smooth heatmap
-  scale_fill_viridis_c(option = "inferno", name = "Value") + #, limits = c(0.0000001, 0.5)) +  # "inferno" for bright-darker range
-  theme_minimal() +
-  theme(panel.grid = element_blank())  # Remove grid lines for a cleaner look
-
-# Close the PDF device to save the file
-dev.off()
-```
-
-#### Figure S8
-
-```{r}
-
-# Define output file name and resolution
-pdf(here("figs","FigureS8.pdf"), width = 12, height = 8)  # Adjust size as needed
-
-ggplot(van_dat) +
-  geom_sf(aes(fill = Factor3_wins), color = NA) +  # No borders for a smooth heatmap
-  scale_fill_viridis_c(option = "inferno", name = "Value") + #, limits = c(0.0000001, 0.5)) +  # "inferno" for bright-darker range
-  theme_minimal() +
-  theme(panel.grid = element_blank())  # Remove grid lines for a cleaner look
-
-# Close the PDF device to save the file
-dev.off()
+```{r figure-S8-net-effects}
+source(here("src", "net_effects_F123_all.R"), local = new.env())  # own environment: does not overwrite objects used by other chunks
+file.copy(here("figs", "FigureS_net_effects.pdf"), here("figs", "FigureS8.pdf"), overwrite = TRUE)
 ```
 
 

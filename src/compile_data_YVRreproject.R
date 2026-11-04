@@ -599,7 +599,7 @@ if (gen_foodretail) {
   food_stores <- bind_rows(food_stores, lowcost_food_sf)
   
   
-  restaurants_CoV <- st_read(here("data","restaurants_fastfood_CoV_quickOSM.geojson"))
+  restaurants_CoV <- st_read(here("data","raw","restaurants_fastfood_CoV_quickOSM.geojson"))
   
   restaurants_CoV <- restaurants_CoV %>% 
     select(amenity, shop, name)
@@ -671,21 +671,13 @@ if (gen_foodretail) {
   van_dat <- van_dat[,-c(140:144)]
 
   
-  # Ensure both datasets are in WGS84
-  van_dat <- st_transform(van_dat, 4326)
-  food_stores <- st_transform(food_stores, 4326)
-  
-  van_centroids <- st_centroid(van_dat)
-  
-  # Then extract coordinates
-  van_coords <- st_coordinates(van_centroids)[, 1:2]
-  food_coords <- st_coordinates(food_stores)[, 1:2]
-  
-  # Use FNN for fast nearest neighbor
-  nn_result <- get.knnx(data = food_coords, query = van_coords, k = 1)
-  
-  # Add nearest distance to your data (in meters)
-  van_dat$nearest_food_retail <- nn_result$nn.dist[,1]
+  ## Distance to nearest food retail, in METRES (EPSG:3857), cell polygon to nearest location,
+  ## the same way as for the transect grid in compile_data_adjustfw.R.
+  ## (Revised Nov 2026: this previously used FNN::get.knnx on lon/lat coordinates in EPSG:4326,
+  ##  which returned distances in degrees. See src/fix_food_retail_distance.R.)
+  source(here("src", "food_retail_locations.R"))
+  van_dat <- st_transform(van_dat, 3857)
+  van_dat$nearest_food_retail <- nearest_food_retail_m(van_dat, food_retail_locations())
   
   
   
@@ -901,94 +893,21 @@ if (gen_center_std) {
 
 
 if (gen_factanal) {
-  ## Factor Analysis of Housing Vars
-  
-  load(file = here("data", "loadings_matrix.Rdata"))
-  loadings_matrix <- unclass(loadings_matrix)
-  
-  # Define the variables to keep in the heatmap
-  selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
-                     "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
-                     "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing")
-  
-  
-  
-  
-  # Ensure the selected variables exist in the dataset
-  van_dat_factors <- van_dat_scaled %>% select(any_of(selected_vars))
-  van_dat_matrix <- as.matrix(van_dat_factors)
-  van_dat_matrix <- van_dat_matrix[,1:16]
-  storage.mode(van_dat_matrix) <- "double"  # Just to be sure
-  
-  # Then project:
-  factor_scores <- van_dat_matrix %*% loadings_matrix
-  
-  van_dat <- cbind(van_dat_scaled, factor_scores)
-  
-  winsorize_base <- function(x, lower = 0.01, upper = 0.99) {
-    q <- quantile(x, probs = c(lower, upper), na.rm = TRUE)
-    x_wins <- pmin(pmax(x, q[1]), q[2])
-    return(x_wins)
-  }
-  
-  # Winsorize Factor3 in van_dat at 1% and 99% levels
-  van_dat$Factor3_wins <- winsorize_base(van_dat$Factor3, lower = 0.001, upper = 0.999)
-  # Winsorize Factor3 in van_dat at 1% and 99% levels
-  van_dat$Factor1_wins <- winsorize_base(van_dat$Factor1, lower = 0.001, upper = 0.999)
-  
-  
-  save(van_dat, file = here("data", "van_dat_final_750.Rdata"))
-  
-  
+  ## Revised Nov 2026. City factor scores are computed by src/factor_analysis_revision.R using
+  ## the transect factor analysis's regression scoring weights and the TRANSECT means and SDs.
+  ## (The original code here multiplied city-standardized data by the loadings matrix, which is
+  ## not how the transect scores were computed, and loaded a loadings matrix that had been
+  ## overwritten by a 4-factor exploratory run.) The script writes
+  ##   data/factor_analysis_16var.Rdata, data/dat_final_750_16var.Rdata and
+  ##   data/van_dat_final_750_16var.Rdata (object van_dat_fa, used for all city maps).
+  ## It needs the transect outputs of compile_data_adjustfw.R (data/dat_no_ub_750.Rdata).
+  source(here("src", "factor_analysis_revision.R"))
 } else {
-  ## object called "dat_final"
-  load(file = here("data", "van_dat_final_750.Rdata"))
+  ## object called "van_dat_fa"
+  load(file = here("data", "van_dat_final_750_16var.Rdata"))
 }
 
-
-
-if (gen_factanal2) {
-  ## Factor Analysis of Housing Vars
-  
-  load(file = here("data", "loadings_matrix_bycollection.Rdata"))
-  loadings_matrix <- unclass(loadings_matrix)
-  
-  # Define the variables to keep in the heatmap
-  selected_vars <- c("rent_pct","nearest_shelter_dist","nearest_food_retail", "pop_km","household_income","employed_pct" ,"no_diploma_pct","separated_divorced_widowed_pct",
-                     "female_pct","one_parent_pct", "avg_household_size","housing_highdensity",
-                     "pct_major_repairs", "pct_rent_thirty", "pct_rent_subsidized", "pct_unsuitable_housing")
-  
-  
-  
-  
-  # Ensure the selected variables exist in the dataset
-  van_dat_factors <- van_dat_scaled %>% select(any_of(selected_vars))
-  van_dat_matrix <- as.matrix(van_dat_factors)
-  van_dat_matrix <- van_dat_matrix[,1:16]
-  storage.mode(van_dat_matrix) <- "double"  # Just to be sure
-  
-  # Then project:
-  factor_scores <- van_dat_matrix %*% loadings_matrix
-  
-  van_dat <- cbind(van_dat_scaled, factor_scores)
-  
-  winsorize_base <- function(x, lower = 0.01, upper = 0.99) {
-    q <- quantile(x, probs = c(lower, upper), na.rm = TRUE)
-    x_wins <- pmin(pmax(x, q[1]), q[2])
-    return(x_wins)
-  }
-  
-  # Winsorize Factor3 in van_dat at 1% and 99% levels
-  van_dat$Factor3_wins <- winsorize_base(van_dat$Factor3, lower = 0.001, upper = 0.999)
-  # Winsorize Factor3 in van_dat at 1% and 99% levels
-  van_dat$Factor2_wins <- winsorize_base(van_dat$Factor2, lower = 0.001, upper = 0.999)
-  van_dat$Factor1_wins <- winsorize_base(van_dat$Factor1, lower = 0.001, upper = 0.999)
-  
-  save(van_dat, file = here("data", "van_dat_final_750_2.Rdata"))
-  
-  
-} else {
-  ## object called "dat_final"
-  load(file = here("data", "van_dat_final_750_2.Rdata"))
-}
+## The former gen_factanal2 module (scores from the by-collection loadings, saved to
+## data/van_dat_final_750_2.Rdata) was only used for exploratory models and has been removed
+## (see git history). It also referenced gen_factanal2, which was never defined above.
 

@@ -31,9 +31,15 @@ library(dplyr)
 ## 1. Data (both UNSCALED)
 ## ---------------------------------------------------------------
 load(here("data", "dat_no_ub_750.Rdata"))                                    # dat_no_ub: transect cells
-## City cells, with nearest_food_retail recomputed in metres by fix_food_retail_distance.R
-## (the original city file has it in degrees)
-load(here("data", "van_dat_demo_lc_retail_shelters_roads_mods_750_fooddist.Rdata"))  # van_dat
+## City cells (van_dat). nearest_food_retail must be in metres. compile_data_YVRreproject.R now
+## writes it that way; files built before the Nov 2026 fix have it in degrees, in which case the
+## corrected copy written by fix_food_retail_distance.R is used instead.
+load(here("data", "van_dat_demo_lc_retail_shelters_roads_mods_750.Rdata"))  # van_dat
+if (max(van_dat$nearest_food_retail, na.rm = TRUE) < 1) {
+  cat("City nearest_food_retail is in degrees (file built before the fix); using the corrected copy.\n")
+  load(here("data", "van_dat_demo_lc_retail_shelters_roads_mods_750_fooddist.Rdata"))
+}
+stopifnot(max(van_dat$nearest_food_retail, na.rm = TRUE) > 1)
 
 fa_vars <- c("rent_pct", "nearest_shelter_dist", "nearest_food_retail", "pop_km",
              "household_income", "employed_pct", "no_diploma_pct",
@@ -98,11 +104,15 @@ print(round(cor(scores_train), 2))
 cat("\nFactor score correlations, city (corrected scoring):\n")
 print(round(cor(scores_city), 2))
 
-## Compare with the scores currently used for the maps
-load(here("data", "van_dat_final_750.Rdata"))   # van_dat (old)
-old <- st_drop_geometry(van_dat)[, paste0("Factor", 1:3)]
-cat("\nFactor score correlations, city (old scoring, as mapped):\n")
-print(round(cor(old, use = "complete.obs"), 2))
+## Compare with the old city scores, if that file is present
+if (file.exists(here("data", "van_dat_final_750.Rdata"))) {
+  old_env <- new.env()
+  load(here("data", "van_dat_final_750.Rdata"), envir = old_env)   # van_dat (old scoring)
+  old <- st_drop_geometry(old_env$van_dat)[, paste0("Factor", 1:3)]
+  cat("\nFactor score correlations, city (old scoring, as mapped):\n")
+  print(round(cor(old, use = "complete.obs"), 2))
+  rm(old_env)
+}
 
 ## Extrapolation: how much of the city lies outside the range sampled by the transects?
 outside <- sweep(Z_city, 2, apply(Z_train, 2, min), "<") | sweep(Z_city, 2, apply(Z_train, 2, max), ">")
