@@ -43,6 +43,10 @@ reorder_cormat <- function(cormat){
 
 ```
 ```{r setup, include=FALSE}
+## Main model for the revised figures (used by every revised chunk below):
+##   "F123"     the three socio-political scales on quantity only; service roads on presence
+##   "F123_all" the three scales on both quantity and presence
+main_model <- "F123"
 # ### read empirical data
 load(file = here("data", "dat_final_750.Rdata"))
 load(file = here("data", "dat_no_ub_750.Rdata")) ### without UBC site (not used in final model)
@@ -132,23 +136,268 @@ ggsave(
 
 #### Figures S2, S5, S6 and supplementary tables (revised November 2026)
 
-The main model is now **F123_all**: all three socio-political scales (Housing-tenure—density,
-Deprivation, Disenfranchisement) in both the presence and quantity parts of the zero-inflated
-Weibull model, fit to the corrected 3-factor, 16-variable factor analysis
+The main model is set by `main_model` in the chunk below: **F123** (default), with the three
+socio-political scales (Housing-tenure—density, Deprivation, Disenfranchisement) on the quantity of
+food waste and service roads on its presence, or **F123_all**, with the scales on both parts. Both
+are fit to the corrected 3-factor, 16-variable factor analysis
 (`src/factor_analysis_revision.R`). Scales are oriented so that higher values are the less
 privileged condition; presence effects are on the log-odds of presence.
 
-`src/supplement_figures_F123_all.R` writes:
+The chunk below writes:
 
 - `figs/FigureS2.pdf`: factor-analysis loading biplots (oriented)
-- `figs/FigureS5.pdf`: prior predictive simulations for F123_all
-- `figs/FigureS6.png`: posterior predictive checks for F123_all
-- `tables/Table_factor_loadings.csv`, `tables/Table_F123_all_coefficients.csv`,
+- `figs/FigureS5.pdf`: prior predictive simulations for the main model
+- `figs/FigureS6.png`: posterior predictive checks for the main model
+- `tables/Table_factor_loadings.csv`, `tables/Table_F123_coefficients.csv` (main model),
   `tables/Table_LOO_all_models.csv`, `tables/Table_bins_litter.csv`,
   `tables/Table_weight_sensitivity.csv`
 
 ```{r supplement-F123-all}
-source(here("src", "supplement_figures_F123_all.R"), local = new.env())  # own environment: does not overwrite objects used by other chunks
+local({
+  library(here)
+  library(sf)
+  library(dplyr)
+  library(tidyr)
+  library(tibble)
+  library(ggplot2)
+  library(ggrepel)
+  library(patchwork)
+  library(cowplot)
+  library(bayesplot)
+  library(rstan)
+  library(loo)      # loo_compare() for the LOO table
+
+  dir.create(here("tables"), showWarnings = FALSE)
+  dir.create(here("figs"), showWarnings = FALSE)
+
+  ## ---- Main model ------------------------------------------------------------------------
+  ## "F123":     the three scales on quantity only; service roads on presence (main model)
+  ## "F123_all": the three scales on both quantity and presence
+  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  model_cfg <- list(
+    F123     = list(fit = "fit_hier_ZIW_16var_F123.Rdata",
+                    pars = c("beta1", "beta2", "beta3", "delta1")),
+    F123_all = list(fit = "fit_hier_ZIW_16var_F123_all.Rdata",
+                    pars = c("beta1", "beta2", "beta3", "delta1", "delta2", "delta3", "delta4"))
+  )
+  cfg <- model_cfg[[main_model]]
+  cat("Main model:", main_model, "\n")
+
+  ## ---------------------------------------------------------------
+  ## Common inputs and orientation
+  ## ---------------------------------------------------------------
+  load(here("data", "factor_analysis_16var.Rdata"))   # fa_result, Lambda, W, ...
+  load(here("data", "dat_final_750_16var.Rdata"))     # dat_final_16var
+  load(here("data", "dat_no_ub_750.Rdata"))           # dat_no_ub
+
+  pick <- function(v) unname(which.max(abs(Lambda[v, ])))
+  k <- c(housing = pick("housing_highdensity"),
+         deprivation = pick("pct_rent_subsidized"),
+         disenfranchisement = pick("employed_pct"))
+  orient <- c(housing = -1, deprivation = 1, disenfranchisement = -1)
+  scale_name <- c(housing = "Housing-tenure—density", deprivation = "Deprivation",
+                  disenfranchisement = "Disenfranchisement")
+
+  ## Model parameters, what they are, and the multiplier that gives the reported orientation
+  par_info <- tribble(
+    ~par,     ~component, ~term,                         ~mult,
+    "beta1",  "Quantity", "Housing-tenure—density",  -1,
+    "beta2",  "Quantity", "Deprivation",                   1,
+    "beta3",  "Quantity", "Disenfranchisement",           -1,
+    "delta1", "Presence", "Service roads",                -1,
+    "delta3", "Presence", "Housing-tenure—density",   1,
+    "delta2", "Presence", "Deprivation",                  -1,
+    "delta4", "Presence", "Disenfranchisement",            1,
+    "mu0",    "Quantity", "Intercept (log Weibull scale)",  1,
+    "tau_mu", "Quantity", "Site SD of intercepts",          1,
+    "alpha",  "Quantity", "Weibull shape",                  1,
+    "gamma",  "Presence", "Intercept (log-odds of presence)", -1
+  )
+
+  ## Re-express a rstan/loo-style summary matrix: multiply by mult (swapping the interval when < 0)
+  orient_summary <- function(s, info = par_info) {
+    info <- info[info$par %in% rownames(s), ]
+    out <- lapply(seq_len(nrow(info)), function(i) {
+      r <- s[info$par[i], ]; m <- info$mult[i]
+      lo <- r[["2.5%"]] * m; hi <- r[["97.5%"]] * m
+      data.frame(component = info$component[i], term = info$term[i], parameter = info$par[i],
+                 median = round(r[["50%"]] * m, 3),
+                 lower_95 = round(min(lo, hi), 3), upper_95 = round(max(lo, hi), 3),
+                 n_eff = if ("n_eff" %in% names(r)) round(r[["n_eff"]]) else NA,
+                 Rhat = if ("Rhat" %in% names(r)) round(r[["Rhat"]], 3) else NA)
+    })
+    do.call(rbind, out)
+  }
+
+  load_fit <- function(file) {
+    env <- new.env(); load(here("data", file), envir = env); get(ls(env)[1], envir = env)
+  }
+
+  ## =========================================================
+  ## Figure S2: loading biplots (oriented)
+  ## =========================================================
+  L <- sweep(Lambda[, k], 2, orient, "*")
+  colnames(L) <- names(k)
+  write.csv(cbind(variable = rownames(L), as.data.frame(round(L, 3)) |>
+                    setNames(scale_name[names(k)])),
+            here("tables", "Table_factor_loadings.csv"), row.names = FALSE)
+
+  pretty_var <- c(
+    rent_pct = "% renters", nearest_shelter_dist = "Distance to shelter",
+    nearest_food_retail = "Distance to food retail", pop_km = "Population density",
+    household_income = "Household income", employed_pct = "% employed",
+    no_diploma_pct = "% no diploma", separated_divorced_widowed_pct = "% separated/divorced/widowed",
+    female_pct = "% female", one_parent_pct = "% one-parent families",
+    avg_household_size = "Household size", housing_highdensity = "High-density housing",
+    pct_major_repairs = "% needing major repairs", pct_rent_thirty = "% rent > 30% of income",
+    pct_rent_subsidized = "% subsidized rent", pct_unsuitable_housing = "% unsuitable housing"
+  )
+  ld <- data.frame(L, variable = unname(pretty_var[rownames(L)]))
+
+  biplot <- function(xs, ys) {
+    ggplot(ld, aes(x = 0, y = 0, xend = .data[[xs]], yend = .data[[ys]])) +
+      geom_hline(yintercept = 0, color = "grey85") + geom_vline(xintercept = 0, color = "grey85") +
+      geom_segment(arrow = arrow(length = unit(0.15, "cm")), color = "firebrick") +
+      geom_text_repel(aes(x = .data[[xs]], y = .data[[ys]], label = variable),
+                      size = 2.6, max.overlaps = Inf, min.segment.length = 0) +
+      coord_equal(xlim = c(-1, 1), ylim = c(-1, 1)) +
+      labs(x = scale_name[[xs]], y = scale_name[[ys]]) +
+      theme_minimal(base_size = 10)
+  }
+  figS2 <- (biplot("housing", "deprivation") | biplot("housing", "disenfranchisement") |
+              biplot("deprivation", "disenfranchisement")) +
+    plot_annotation(tag_levels = "a", tag_suffix = ")")
+  ggsave(here("figs", "FigureS2.pdf"), figS2, width = 14, height = 5.2)
+
+  ## =========================================================
+  ## Figure S5: prior predictive simulations for the main model
+  ## Priors as in fw_hier_3pred_ZIW_4pred_bern.stan; covariates are the observed transect values.
+  ## =========================================================
+  fac <- function(kk) dat_final_16var[[paste0("Factor", kk)]]
+  Xh <- fac(k[["housing"]]); Xd <- fac(k[["deprivation"]]); Xe <- fac(k[["disenfranchisement"]])
+  P1 <- (dat_no_ub$service_road_weight - mean(dat_no_ub$service_road_weight)) /
+        sd(dat_no_ub$service_road_weight)
+  site_id <- as.integer(factor(dat_no_ub$site))
+  N <- length(site_id); J <- max(site_id)
+
+  set.seed(1234)
+  n_sim <- 20
+  sims <- lapply(seq_len(n_sim), function(i) {
+    alpha  <- abs(rnorm(1, 0.5, 0.5))
+    mu     <- rnorm(1, 0, 1) + abs(rnorm(1, 0, 1)) * rnorm(J, 0, 1)
+    b      <- rnorm(3, 0, 1)
+    gam    <- rnorm(1, 1, 1)
+    d      <- rnorm(4, 0, 1)
+    if (main_model == "F123") d[2:4] <- 0   # F123: only service roads in the presence part
+    sigma  <- exp(mu[site_id] + b[1] * Xh + b[2] * Xd + b[3] * Xe)
+    pi0    <- plogis(gam + d[1] * P1 + d[2] * Xd + d[3] * Xh + d[4] * Xe)
+    y <- ifelse(runif(N) < pi0, 0, rweibull(N, alpha, sigma))
+    tibble(sim_id = i, fw_score_weighted = y)
+  })
+  sim_df <- bind_rows(sims)
+  obs_zero_rate <- mean(dat_no_ub$fw_score_weighted == 0)
+
+  pp1 <- ggplot(filter(sim_df, sim_id <= 4), aes(x = fw_score_weighted)) +
+    geom_histogram(bins = 100, fill = "steelblue", alpha = 0.7) +
+    facet_wrap(~ sim_id, scales = "free_x") +
+    theme_minimal(base_size = 11) + labs(x = "Food waste score", y = "Count")
+  pp2 <- sim_df |>
+    group_by(sim_id) |> summarise(p_zero = mean(fw_score_weighted == 0)) |>
+    ggplot(aes(x = p_zero)) +
+    geom_histogram(bins = 40, fill = "firebrick", alpha = 0.8) +
+    geom_vline(xintercept = obs_zero_rate, linetype = "dashed", linewidth = 1) +
+    theme_minimal(base_size = 11) + labs(x = "Proportion of zeros (simulation)", y = "Count")
+  pp3 <- ggplot(filter(sim_df, sim_id <= 4, fw_score_weighted > 0), aes(x = fw_score_weighted)) +
+    geom_histogram(bins = 100, fill = "darkgreen", alpha = 0.7) +
+    facet_wrap(~ sim_id, scales = "free_x") +
+    theme_minimal(base_size = 11) + labs(x = "Positive food waste score", y = "Count")
+  ggsave(here("figs", "FigureS5.pdf"),
+         (pp1 / pp2 / pp3) + plot_annotation(tag_levels = "a", tag_suffix = ")"),
+         width = 6, height = 8, device = pdf)
+
+  ## =========================================================
+  ## Figure S6: posterior predictive checks for the main model
+  ## =========================================================
+  fit <- load_fit(cfg$fit)
+  y_rep <- rstan::extract(fit, pars = "fw_score_pred")$fw_score_pred
+  s_all <- summary(fit, pars = intersect(par_info$par, c(cfg$pars, "mu0", "tau_mu", "alpha", "gamma")),
+                   probs = c(0.025, 0.5, 0.975))$summary
+  rm(fit); gc()
+
+  y_obs <- dat_no_ub$fw_score_weighted
+  set.seed(123)
+  rows <- sample(nrow(y_rep), 50)
+  base_theme <- theme_minimal() +
+    theme(axis.title.x = element_blank(), plot.title = element_text(hjust = 0.5),
+          legend.position = "none")
+  shared_legend <- get_legend(ppc_dens_overlay(y_obs, y_rep[rows, ]) +
+                                theme_minimal() + theme(legend.position = "right"))
+  q1 <- ppc_dens_overlay(y_obs, y_rep[rows, ]) +
+    labs(title = "Full Range", x = "", y = "Density") + base_theme
+  q2 <- ppc_dens_overlay(y_obs, y_rep[rows, ]) + xlim(0.000001, 10) +
+    labs(title = "Zoom: >0–10", x = "", y = "") + base_theme
+  q3 <- ppc_dens_overlay(y_obs, y_rep[rows, ]) + coord_cartesian(xlim = c(-0.01, 1)) +
+    labs(title = "Zoom: 0–1", x = "", y = "") + base_theme
+  panel_row <- plot_grid(q1, q2, q3, labels = c("a", "b", "c"), ncol = 3,
+                         align = "hv", axis = "tblr", label_size = 16)
+  main_plot <- plot_grid(panel_row, ggdraw() + draw_label("Food Waste Score", size = 14),
+                         ncol = 1, rel_heights = c(1, 0.08))
+  ggsave(here("figs", "FigureS6.png"),
+         plot_grid(main_plot, shared_legend, ncol = 2, rel_widths = c(1, 0.12)),
+         width = 12, height = 4, dpi = 300)
+
+  cat("\nObserved vs. predicted share of zeros:",
+      round(mean(y_obs == 0), 3), "vs.", round(mean(y_rep[rows, ] == 0), 3), "\n")
+  rm(y_rep); gc()
+
+  ## =========================================================
+  ## Tables
+  ## =========================================================
+  ## Main-model coefficients
+  write.csv(orient_summary(s_all), here("tables", paste0("Table_", main_model, "_coefficients.csv")),
+            row.names = FALSE)
+
+  ## LOO comparison
+  load(here("data", "loo_16var_models_all.Rdata"))   # loos_all
+  model_desc <- c(
+    F123_all = "All three scales in presence and quantity",
+    F123_D   = "All three scales in quantity; Deprivation also in presence",
+    F123     = "All three scales in quantity only",
+    F12      = "Housing + Deprivation in quantity only",
+    F13      = "Housing + Disenfranchisement in quantity only",
+    proxy    = "Proxy: distance to food retail (Tweedie)"
+  )
+  model_desc[main_model] <- paste(model_desc[main_model], "(main model)")
+  cmp <- loo_compare(loos_all)
+  loo_tab <- data.frame(
+    model = rownames(cmp),
+    description = unname(model_desc[rownames(cmp)]),
+    elpd_loo = round(cmp[, "elpd_loo"], 1), se_elpd_loo = round(cmp[, "se_elpd_loo"], 1),
+    p_loo = round(cmp[, "p_loo"], 1), looic = round(cmp[, "looic"], 1),
+    elpd_diff = round(cmp[, "elpd_diff"], 1), se_diff = round(cmp[, "se_diff"], 1),
+    row.names = NULL
+  )
+  write.csv(loo_tab, here("tables", "Table_LOO_all_models.csv"), row.names = FALSE)
+  print(loo_tab)
+
+  ## Bins vs food litter
+  load(here("data", "bins_litter_fits_summary.Rdata"))   # summaries (bins, litter)
+  ## (fit with the F123_all structure: all three scales in presence and quantity)
+  bl <- rbind(cbind(model = "F123_all", outcome = "Bins and receptacles", orient_summary(summaries$bins)),
+              cbind(model = "F123_all", outcome = "Food litter",          orient_summary(summaries$litter)))
+  write.csv(bl, here("tables", "Table_bins_litter.csv"), row.names = FALSE)
+
+  ## Receptacle-form weight sensitivity
+  load(here("data", "weight_sensitivity_F123_all.Rdata"))   # res (original, equal, older)
+  ws_labels <- c(original = "Original (dumpster 30x home bin)",
+                 older = "Older weights (dumpster 15x home bin)",
+                 equal = "Equal form weights")
+  ws <- do.call(rbind, lapply(names(ws_labels), function(n)
+    cbind(model = "F123_all", weights = ws_labels[[n]], orient_summary(res[[n]]))))
+  write.csv(ws, here("tables", "Table_weight_sensitivity.csv"), row.names = FALSE)
+
+  cat("\nDone: FigureS2.pdf, FigureS5.pdf, FigureS6.png and tables/ written.\n")
+})
 ```
 
 The previous Figure S2 code (biplot from the superseded factor-analysis run) has been removed;
@@ -258,13 +507,13 @@ ggsave(
  
 #### Figure S5
 
-Revised: written by `src/supplement_figures_F123_all.R` (chunk `supplement-F123-all` above), as
-prior predictive simulations for F123_all with the observed transect covariates.
+Revised: written by chunk `supplement-F123-all` above, as
+prior predictive simulations for the main model with the observed transect covariates.
 
 ##### Figure S6
 
-Revised: written by `src/supplement_figures_F123_all.R` (chunk `supplement-F123-all` above), as
-posterior predictive checks for F123_all.
+Revised: written by chunk `supplement-F123-all` above, as
+posterior predictive checks for the main model.
 
 #### Figure S7: the three socio-political scales across the City of Vancouver
 
@@ -274,8 +523,122 @@ population density below 650 persons km^-2^ are not shown. Replaces the former S
 (maps of the superseded Factor 1 and Factor 3 scores).
 
 ```{r figure-S7-factor-maps}
-source(here("src", "supplement_factor_maps.R"), local = new.env())  # own environment: does not overwrite objects used by other chunks
-file.copy(here("figs", "FigureS_factor_maps.pdf"), here("figs", "FigureS7.pdf"), overwrite = TRUE)
+local({
+  library(here)
+  library(sf)
+  library(dplyr)
+  library(ggplot2)
+  library(scales)
+  library(scico)
+  library(cowplot)
+
+  ## ---------------------------------------------------------------
+  ## 1. Oriented factor scores and loadings
+  ## ---------------------------------------------------------------
+  load(here("data", "factor_analysis_16var.Rdata"))     # Lambda
+  load(here("data", "van_dat_final_750_16var.Rdata"))   # van_dat_fa (city cells, corrected scores)
+
+  pick <- function(v) unname(which.max(abs(Lambda[v, ])))   # unname: keep "housing", not "housing.Factor1"
+  k <- c(housing = pick("housing_highdensity"),
+         deprivation = pick("pct_rent_subsidized"),
+         disenfranchisement = pick("employed_pct"))
+  orient <- c(housing = -1, deprivation = 1, disenfranchisement = -1)
+  titles <- c(housing = "Housing-tenure—density",
+              deprivation = "Deprivation",
+              disenfranchisement = "Disenfranchisement")
+  subtitles <- c(housing = "Higher = more renters, lower income, denser housing",
+                 deprivation = "Higher = more social and material deprivation",
+                 disenfranchisement = "Higher = less employment, lower female share")
+
+  for (s in names(k)) van_dat_fa[[s]] <- orient[[s]] * van_dat_fa[[paste0("Factor", k[[s]])]]
+
+  ## Cells in masked DAs (domain_mask.R: population density below the threshold) are removed
+  mask_col <- "grey85"
+  if ("in_domain" %in% names(van_dat_fa)) {
+    ## Masked DAs are removed from the maps entirely (drawn as empty space)
+    cat("Removing", sum(!van_dat_fa$in_domain), "masked cells from the maps\n")
+    van_dat_fa <- van_dat_fa[van_dat_fa$in_domain, ]
+  } else {
+    cat("No in_domain column found: run src/domain_mask.R to mask parkland/unpopulated cells.\n")
+  }
+
+  ## Sanity check: oriented scores vs. key raw variables (city cells)
+  cat("Correlations of oriented scores with raw variables (city):\n")
+  raw <- st_drop_geometry(van_dat_fa)[, c("rent_pct", "household_income", "housing_highdensity",
+                                          "pct_rent_subsidized", "one_parent_pct",
+                                          "employed_pct", "female_pct")]
+  print(round(cor(raw, st_drop_geometry(van_dat_fa)[, names(k)], use = "complete.obs"), 2))
+
+  L_oriented <- sweep(Lambda[, k], 2, orient, "*")
+  colnames(L_oriented) <- titles[names(k)]
+  write.csv(round(L_oriented, 3), here("data", "factor_loadings_16var_oriented.csv"))
+  cat("\nOriented loadings:\n"); print(round(L_oriented, 2))
+
+  ## ---------------------------------------------------------------
+  ## 2. Study sites and labels (same placement as the supplementary covariate maps)
+  ## ---------------------------------------------------------------
+  load(here("data", "sites_3857.Rdata"))
+  sites_3857 <- sites_3857[-c(8), ]
+  site_labels <- c("Collingwood", "McKenzie", "Shaugnessy", "Queen Elizabeth",
+                   "False Creek", "Downtown", "West End", "43 & Churchill",
+                   "14 & Spruce", "19 & Yukon", "Strathcona", "2nd Beach")
+  sites_3857 <- st_transform(sites_3857, st_crs(van_dat_fa))
+
+  label_coords <- st_coordinates(suppressWarnings(st_centroid(sites_3857)))
+  label_center <- c(mean(label_coords[, 1]), min(label_coords[, 2]) - 500)
+  dx <- label_coords[, 1] - label_center[1]
+  dy <- label_coords[, 2] - label_center[2]
+  dist <- sqrt(dx^2 + dy^2)
+  push_dist <- 1000
+  label_df <- data.frame(X = label_coords[, 1] + dx / dist * push_dist,
+                         Y = label_coords[, 2] + dy / dist * push_dist,
+                         label = site_labels)
+  i_col <- which(site_labels == "Collingwood"); i_mck <- which(site_labels == "McKenzie")
+  label_df$Y[i_col] <- label_df$Y[i_col] + 120; label_df$X[i_col] <- label_df$X[i_col] - 120
+  label_df$Y[i_mck] <- label_df$Y[i_mck] + 300; label_df$X[i_mck] <- label_df$X[i_mck] + 300
+
+  offsets <- expand.grid(dx = c(-0.5, 0, 0.5), dy = c(-0.5, 0, 0.5))
+  offsets <- offsets[!(offsets$dx == 0 & offsets$dy == 0), ]
+  outline_df <- do.call(rbind, lapply(seq_len(nrow(offsets)), function(i)
+    transform(label_df, X = X + offsets$dx[i], Y = Y + offsets$dy[i])))
+
+  ## ---------------------------------------------------------------
+  ## 3. Shared symmetric diverging scale
+  ## ---------------------------------------------------------------
+  L <- max(abs(unlist(lapply(names(k), function(s)
+    quantile(van_dat_fa[[s]], c(0.01, 0.99), na.rm = TRUE)))))
+  cat("\nShared colour limits: ±", signif(L, 3), "\n")
+  fill_scale <- scale_fill_gradientn(
+    colours = scico(101, palette = "vik", begin = 0.15, end = 0.85),
+    limits = c(-L, L), oob = squish, na.value = mask_col, name = "Score"
+  )
+
+  map_one <- function(s, label_size = 3) {
+    ggplot() +
+      geom_sf(data = van_dat_fa, aes(fill = .data[[s]]), color = NA) +
+      geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.2) +
+      geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.5) +
+      geom_text(data = outline_df, aes(X, Y, label = label),
+                size = label_size + 0.05, fontface = "bold", color = "black") +
+      geom_text(data = label_df, aes(X, Y, label = label),
+                size = label_size, fontface = "bold", color = "white") +
+      fill_scale +
+      guides(fill = guide_colourbar(barheight = unit(7, "lines"))) +
+      labs(title = titles[[s]], subtitle = subtitles[[s]]) +
+      theme_void(base_size = 10) +
+      theme(plot.title = element_text(face = "bold", size = 11),
+            plot.subtitle = element_text(size = 8.5),
+            legend.title = element_text(size = 9),
+            legend.text = element_text(size = 8))
+  }
+
+  maps <- lapply(setNames(names(k), names(k)), map_one)
+
+  fig <- plot_grid(plotlist = maps, ncol = 1, labels = c("(a)", "(b)", "(c)"),
+                   label_size = 12, hjust = 0, label_x = 0.01)
+  ggsave(here("figs", "FigureS7.pdf"), fig, width = 7, height = 15)
+  cat("\nDone: FigureS7.pdf\n")
+})
 ```
 
 #### Figure S8: net effect of each scale on expected food waste
@@ -284,8 +647,101 @@ Revised: ratio of expected food waste score at +1 SD (towards the less privilege
 transect mean, with its presence and quantity components.
 
 ```{r figure-S8-net-effects}
-source(here("src", "net_effects_F123_all.R"), local = new.env())  # own environment: does not overwrite objects used by other chunks
-file.copy(here("figs", "FigureS_net_effects.pdf"), here("figs", "FigureS8.pdf"), overwrite = TRUE)
+local({
+  library(here)
+  library(sf)
+  library(dplyr)
+  library(ggplot2)
+  library(rstan)
+
+  load(here("data", "factor_analysis_16var.Rdata"))   # Lambda
+  load(here("data", "dat_final_750_16var.Rdata"))     # dat_final_16var
+
+  pick <- function(v) unname(which.max(abs(Lambda[v, ])))
+  k <- c(housing = pick("housing_highdensity"),
+         deprivation = pick("pct_rent_subsidized"),
+         disenfranchisement = pick("employed_pct"))
+  orient <- c(housing = -1, deprivation = 1, disenfranchisement = -1)
+  sd_fac <- sapply(k, function(kk) sd(dat_final_16var[[paste0("Factor", kk)]]))
+  cat("Transect SD of each factor score:", round(sd_fac, 3), "\n")
+
+  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  fit_file <- c(F123 = "fit_hier_ZIW_16var_F123.Rdata",
+                F123_all = "fit_hier_ZIW_16var_F123_all.Rdata")[[main_model]]
+  cat("Main model:", main_model, "\n")
+  env <- new.env()
+  load(here("data", fit_file), envir = env)
+  fit_obj <- get(ls(env)[1], envir = env)
+  post_pars <- c("mu0", "alpha", "gamma", "beta1", "beta2", "beta3", "delta1",
+                 if (main_model == "F123_all") c("delta2", "delta3", "delta4"))
+  post <- rstan::extract(fit_obj, pars = post_pars)
+  rm(env, fit_obj); gc()
+  ## F123 has no scale effects on presence: set those coefficients to 0
+  for (d in c("delta2", "delta3", "delta4")) if (is.null(post[[d]])) post[[d]] <- 0
+
+  ## Shifts in the FITTED predictors for "+1 SD towards the less privileged condition"
+  ## (X1 = Housing, X2 = Deprivation, X3 = Enfranchisement; P1 = roads, P2 = Dep, P3 = Hous, P4 = Enf)
+  shift <- function(scale) {
+    z <- c(hous = 0, dep = 0, enf = 0, road = 0)
+    if (scale == "roads") z["road"] <- 1
+    if (scale == "housing") z["hous"] <- orient[["housing"]] * sd_fac[["housing"]]
+    if (scale == "deprivation") z["dep"] <- orient[["deprivation"]] * sd_fac[["deprivation"]]
+    if (scale == "disenfranchisement") z["enf"] <- orient[["disenfranchisement"]] * sd_fac[["disenfranchisement"]]
+    z
+  }
+
+  p_present <- function(z) 1 - plogis(post$gamma + post$delta1 * z["road"] + post$delta2 * z["dep"] +
+                                        post$delta3 * z["hous"] + post$delta4 * z["enf"])
+  amount <- function(z) exp(post$mu0 + post$beta1 * z["hous"] + post$beta2 * z["dep"] +
+                              post$beta3 * z["enf"]) * gamma(1 + 1 / post$alpha)
+
+  z0 <- shift("none")
+  P0 <- p_present(z0); A0 <- amount(z0)
+  cat("Baseline expected FW score (posterior median):", signif(median(P0 * A0), 3),
+      "| P(present):", signif(median(P0), 3), "| amount if present:", signif(median(A0), 3), "\n")
+
+  summ <- function(x) c(median = median(x), lower_95 = unname(quantile(x, 0.025)),
+                        upper_95 = unname(quantile(x, 0.975)), p_gt_1 = mean(x > 1))
+
+  labels <- c(roads = "Service roads",
+              housing = "Housing-tenure—density",
+              deprivation = "Deprivation",
+              disenfranchisement = "Disenfranchisement")
+  tab <- do.call(rbind, lapply(names(labels), function(s) {
+    z <- shift(s)
+    P1 <- p_present(z); A1 <- amount(z)
+    rbind(
+      data.frame(scale = labels[[s]], measure = "Net (expected FW score)", t(summ((P1 * A1) / (P0 * A0)))),
+      data.frame(scale = labels[[s]], measure = "Presence",                t(summ(P1 / P0))),
+      data.frame(scale = labels[[s]], measure = "Quantity",                t(summ(A1 / A0)))
+    )
+  }))
+  tab[, c("median", "lower_95", "upper_95", "p_gt_1")] <- round(tab[, c("median", "lower_95", "upper_95", "p_gt_1")], 3)
+  rownames(tab) <- NULL
+  dir.create(here("tables"), showWarnings = FALSE)
+  write.csv(tab, here("tables", "Table_net_effects.csv"), row.names = FALSE)
+  cat("\nRatio of expected value at +1 SD (towards the less privileged condition) vs. the transect mean:\n")
+  print(tab)
+
+  ## Figure: ratios on a log scale; 1 = no change
+  tab$scale   <- factor(tab$scale, levels = rev(unname(labels)))
+  tab$measure <- factor(tab$measure, levels = c("Net (expected FW score)", "Presence", "Quantity"))
+  p <- ggplot(tab, aes(x = median, y = scale, colour = measure, shape = measure)) +
+    geom_vline(xintercept = 1, linetype = "dashed", colour = "grey50") +
+    geom_pointrange(aes(xmin = lower_95, xmax = upper_95),
+                    position = position_dodge(width = 0.6), size = 0.4) +
+    scale_x_log10() +
+    scale_colour_manual(values = c("Net (expected FW score)" = "black",
+                                   "Presence" = "orange", "Quantity" = "purple"), name = NULL) +
+    scale_shape_manual(values = c("Net (expected FW score)" = 16, "Presence" = 17, "Quantity" = 15),
+                       name = NULL) +
+    labs(x = "Ratio at +1 SD vs. transect mean (log scale)", y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top")
+  ggsave(here("figs", "FigureS8.pdf"), p, width = 6.5, height = 4)
+
+  cat("\nDone: tables/Table_net_effects.csv and figs/FigureS8.pdf\n")
+})
 ```
 
 
@@ -812,3 +1268,53 @@ ggsave(
 ```
 
 
+#### Figure S16: expected food waste score averaged to 750 m cells (new, November 2026)
+
+Main model (F123 by default; set `main_model`), posterior-median expected food waste score averaged within 750 m cells
+(UTM 10N). Cells less than half inside the city grid, or less than half within the shown
+(unmasked) area, are dropped.
+
+```{r figure-S16-750m}
+local({
+  library(here)
+  library(sf)
+  library(dplyr)
+  library(ggplot2)
+  library(scales)
+
+  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  load(here("data", "van_dat_predictions_16var.Rdata"))   # van_dat_fa (pred_*, in_domain)
+  van_dat_fa$pred_main <- van_dat_fa[[paste0("pred_", main_model)]]
+  if ("in_domain" %in% names(van_dat_fa)) van_dat_fa <- van_dat_fa[van_dat_fa$in_domain, ]
+
+  map_theme <- theme_minimal(base_size = 12) +
+    theme(panel.grid = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_blank(), legend.title = element_text(size = 10),
+          legend.text = element_text(size = 9), legend.position = "right",
+          plot.margin = margin(5, 5, 5, 5))
+
+  city_utm <- st_transform(van_dat_fa["pred_main"], 26910)
+  grid750 <- st_sf(geometry = st_make_grid(city_utm, cellsize = 750))
+  grid750$cell <- seq_len(nrow(grid750))
+  pts <- st_join(suppressWarnings(st_centroid(city_utm)), grid750, join = st_within)
+  cell_means <- st_drop_geometry(pts) |>
+    group_by(cell) |>
+    summarise(pred = mean(pred_main, na.rm = TRUE), n_sub = n(),
+              n_valid = sum(!is.na(pred_main)), .groups = "drop") |>
+    mutate(coverage = n_sub / max(n_sub), valid_share = n_valid / n_sub)
+  keep750 <- cell_means$coverage >= 0.5 & cell_means$valid_share >= 0.5
+  cat("750 m cells:", nrow(cell_means), "| dropped (< 50% inside the city, or < 50% within",
+      "sampled conditions):", sum(!keep750), "\n")
+  grid750 <- inner_join(grid750, cell_means[keep750, ], by = "cell")
+
+  lims750 <- quantile(grid750$pred, c(0.01, 0.99))
+  p750 <- ggplot(grid750) +
+    geom_sf(aes(fill = pred), color = NA) +
+    scale_fill_viridis_c(option = "inferno", limits = lims750, oob = squish,
+                         name = "Mean expected\nFW Score") +
+    map_theme
+  ggsave(here("figs", "FigureS16.pdf"), p750, width = 8, height = 6)
+
+  cat("\nDone: FigureS16.pdf\n")
+})
+```

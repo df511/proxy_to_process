@@ -63,13 +63,15 @@ if (run_diagnostics) {
 }
 
 ## 6. Figures and tables -----------------------------------------------------------------------
+## All main figures (2-4) come from manuscript_main_figs.Rmd and all supplementary figures
+## (S1-S16) and tables from manuscript_supplement_figs.Rmd. In RStudio you can instead open each
+## Rmd and use Run All (Ctrl/Cmd + Alt + R).
 if (run_figures) {
-  step("final_figures_F123_all.R")      # Figures 3 and 4, 750 m map
-  step("supplement_factor_maps.R")      # city maps of the three scales (Figure S7)
-  step("supplement_figures_F123_all.R") # Figures S2, S5, S6 and supplementary tables
-  step("net_effects_F123_all.R")        # net effects (Figure S8)
-  ## Remaining supplementary figures (S1, S3, S4, S9-S15) are produced by
-  ## manuscript_supplement_figs.Rmd; Figure 2 by manuscript_main_figs.Rmd.
+  for (rmd in c("manuscript_main_figs.Rmd", "manuscript_supplement_figs.Rmd")) {
+    cat("\n\n#################### ", rmd, " (", format(Sys.time(), "%H:%M"), ")\n", sep = "")
+    rmarkdown::render(here("src", rmd), envir = new.env(), quiet = TRUE)
+    invisible(gc())
+  }
 }
 
 cat("\nDone.\n")

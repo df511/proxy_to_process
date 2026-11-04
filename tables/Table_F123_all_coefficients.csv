@@ -1,0 +1,12 @@
+"component","term","parameter","median","lower_95","upper_95","n_eff","Rhat"
+"Quantity","Housing-tenure—density","beta1",0.333,0.157,0.544,1339,1.001
+"Quantity","Deprivation","beta2",-0.175,-0.297,-0.073,2681,1
+"Quantity","Disenfranchisement","beta3",0.089,0.024,0.157,3389,1
+"Presence","Service roads","delta1",1.192,1.113,1.269,3517,1
+"Presence","Housing-tenure—density","delta3",-0.206,-0.308,-0.108,4215,1
+"Presence","Deprivation","delta2",0.367,0.28,0.452,4500,1.001
+"Presence","Disenfranchisement","delta4",-0.064,-0.173,0.041,4416,1
+"Quantity","Intercept (log Weibull scale)","mu0",0.283,0.079,0.491,1444,1.001
+"Quantity","Site SD of intercepts","tau_mu",0.295,0.17,0.575,1229,1.004
+"Quantity","Weibull shape","alpha",1.294,1.222,1.369,5068,0.999
+"Presence","Intercept (log-odds of presence)","gamma",-2.268,-2.385,-2.153,3723,1.001

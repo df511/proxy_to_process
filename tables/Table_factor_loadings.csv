@@ -1,0 +1,17 @@
+"variable","Housing-tenure—density","Deprivation","Disenfranchisement"
+"rent_pct",0.921,0.148,0.119
+"nearest_shelter_dist",-0.731,-0.082,-0.099
+"nearest_food_retail",-0.757,-0.126,-0.156
+"pop_km",0.519,0.196,0.03
+"household_income",-0.811,-0.262,-0.293
+"employed_pct",-0.086,-0.268,-0.957
+"no_diploma_pct",-0.069,0.916,0.058
+"separated_divorced_widowed_pct",0.404,0.701,0.317
+"female_pct",-0.276,-0.389,-0.617
+"one_parent_pct",-0.182,0.854,0.31
+"avg_household_size",-0.938,0.042,-0.267
+"housing_highdensity",0.954,-0.054,0.071
+"pct_major_repairs",0.363,0.311,0.055
+"pct_rent_thirty",-0.415,-0.338,-0.172
+"pct_rent_subsidized",0.256,0.923,0.189
+"pct_unsuitable_housing",0.657,-0.119,-0.212
