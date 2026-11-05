@@ -21,9 +21,9 @@ library(scico)
 
 ```{r setup, include=FALSE}
 ## Main model for the revised figures (used by every revised chunk below):
-##   "F123"     the three socio-political scales on quantity only; service roads on presence
-##   "F123_all" the three scales on both quantity and presence
-main_model <- "F123"
+##   "F123_all" the three socio-political scales on both quantity and presence (main model)
+##   "F123"     the three scales on quantity only; service roads on presence
+main_model <- "F123_all"
 # ### read empirical data
 load(file = here("data", "dat_final_750.Rdata"))
 load(file = here("data", "dat_no_ub_750.Rdata"))
@@ -199,9 +199,9 @@ dev.off()
 ### Figures 3 and 4
 
 Revised November 2026. Figures 3 and 4 use the main model set by `main_model` in the chunk
-below: **F123** (default), with the three socio-political scales (Housing-tenure—density,
-Deprivation, Disenfranchisement) on the quantity of food waste and service roads on its presence,
-or **F123_all**, with the three scales on both parts. Both are fit to the corrected 3-factor,
+below: **F123_all** (main model), with the three socio-political scales (Housing-tenure—density,
+Deprivation, Disenfranchisement) on both the presence and the quantity of food waste, or **F123**,
+with the scales on quantity only and service roads on presence. Both are fit to the corrected 3-factor,
 16-variable factor scores. Inputs come from the revised analysis steps listed in `src/run_revised_analysis.R`
 (factor analysis, fits, predictions, population-density mask).
 
@@ -233,9 +233,9 @@ local({
   ## Inputs
   ## ---------------------------------------------------------------
   ## ---- Main model ------------------------------------------------------------------------
-  ## "F123":     the three scales on quantity only; service roads on presence (main model)
-  ## "F123_all": the three scales on both quantity and presence
-  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  ## "F123_all": the three scales on both quantity and presence (main model)
+  ## "F123":     the three scales on quantity only; service roads on presence
+  if (!exists("main_model")) main_model <- "F123_all"   # set once in the setup chunk
   model_cfg <- list(
     F123     = list(fit = "fit_hier_ZIW_16var_F123.Rdata",
                     pars = c("beta1", "beta2", "beta3", "delta1")),

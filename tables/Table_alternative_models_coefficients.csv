@@ -1,0 +1,15 @@
+"model","component","term","median","lower_95","upper_95"
+"F123_all (main)","Quantity","Housing-tenure—density",0.333,0.157,0.544
+"F123_all (main)","Quantity","Deprivation",-0.175,-0.297,-0.073
+"F123_all (main)","Quantity","Disenfranchisement",0.089,0.024,0.157
+"F123_all (main)","Presence","Service roads",1.192,1.113,1.269
+"F123_all (main)","Presence","Housing-tenure—density",-0.206,-0.308,-0.108
+"F123_all (main)","Presence","Deprivation",0.367,0.28,0.452
+"F123_all (main)","Presence","Disenfranchisement",-0.064,-0.173,0.041
+"F123","Quantity","Housing-tenure—density",0.334,0.155,0.532
+"F123","Quantity","Deprivation",-0.178,-0.29,-0.072
+"F123","Quantity","Disenfranchisement",0.09,0.023,0.161
+"F123","Presence","Service roads",1.152,1.076,1.231
+"F13","Quantity","Housing-tenure—density",0.319,0.142,0.522
+"F13","Quantity","Disenfranchisement",0.087,0.014,0.165
+"F13","Presence","Service roads",1.152,1.077,1.226

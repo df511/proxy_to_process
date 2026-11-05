@@ -1,0 +1,28 @@
+"model","weights","component","term","parameter","median","lower_95","upper_95","n_eff","Rhat"
+"F123_all","Original (dumpster 30x home bin)","Quantity","Housing-tenure—density","beta1",0.333,0.157,0.544,1339,1.001
+"F123_all","Original (dumpster 30x home bin)","Quantity","Deprivation","beta2",-0.175,-0.297,-0.073,2681,1
+"F123_all","Original (dumpster 30x home bin)","Quantity","Disenfranchisement","beta3",0.089,0.024,0.157,3389,1
+"F123_all","Original (dumpster 30x home bin)","Presence","Service roads","delta1",1.192,1.113,1.269,3517,1
+"F123_all","Original (dumpster 30x home bin)","Presence","Housing-tenure—density","delta3",-0.206,-0.308,-0.108,4215,1
+"F123_all","Original (dumpster 30x home bin)","Presence","Deprivation","delta2",0.367,0.28,0.452,4500,1.001
+"F123_all","Original (dumpster 30x home bin)","Presence","Disenfranchisement","delta4",-0.064,-0.173,0.041,4416,1
+"F123_all","Original (dumpster 30x home bin)","Quantity","Site SD of intercepts","tau_mu",0.295,0.17,0.575,1229,1.004
+"F123_all","Original (dumpster 30x home bin)","Quantity","Weibull shape","alpha",1.294,1.222,1.369,5068,0.999
+"F123_all","Older weights (dumpster 15x home bin)","Quantity","Housing-tenure—density","beta1",0.243,0.08,0.443,1394,1.001
+"F123_all","Older weights (dumpster 15x home bin)","Quantity","Deprivation","beta2",-0.171,-0.284,-0.069,2283,1
+"F123_all","Older weights (dumpster 15x home bin)","Quantity","Disenfranchisement","beta3",0.062,-0.008,0.135,4223,1
+"F123_all","Older weights (dumpster 15x home bin)","Presence","Service roads","delta1",1.191,1.112,1.269,3684,0.999
+"F123_all","Older weights (dumpster 15x home bin)","Presence","Housing-tenure—density","delta3",-0.207,-0.305,-0.111,4333,1
+"F123_all","Older weights (dumpster 15x home bin)","Presence","Deprivation","delta2",0.367,0.282,0.454,4414,1
+"F123_all","Older weights (dumpster 15x home bin)","Presence","Disenfranchisement","delta4",-0.063,-0.172,0.038,4894,1
+"F123_all","Older weights (dumpster 15x home bin)","Quantity","Site SD of intercepts","tau_mu",0.278,0.156,0.513,1078,1.006
+"F123_all","Older weights (dumpster 15x home bin)","Quantity","Weibull shape","alpha",1.293,1.216,1.37,5105,0.999
+"F123_all","Equal form weights","Quantity","Housing-tenure—density","beta1",0.13,-0.078,0.406,1403,1.004
+"F123_all","Equal form weights","Quantity","Deprivation","beta2",-0.165,-0.284,-0.059,3000,1
+"F123_all","Equal form weights","Quantity","Disenfranchisement","beta3",0.065,-0.002,0.137,2868,1.002
+"F123_all","Equal form weights","Presence","Service roads","delta1",1.191,1.115,1.271,3762,1.001
+"F123_all","Equal form weights","Presence","Housing-tenure—density","delta3",-0.208,-0.305,-0.107,4397,1
+"F123_all","Equal form weights","Presence","Deprivation","delta2",0.368,0.281,0.455,4200,0.999
+"F123_all","Equal form weights","Presence","Disenfranchisement","delta4",-0.065,-0.168,0.038,4916,1
+"F123_all","Equal form weights","Quantity","Site SD of intercepts","tau_mu",0.392,0.238,0.709,1226,1.003
+"F123_all","Equal form weights","Quantity","Weibull shape","alpha",1.35,1.273,1.429,4244,1

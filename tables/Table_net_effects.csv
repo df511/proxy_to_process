@@ -1,0 +1,13 @@
+"scale","measure","median","lower_95","upper_95","p_gt_1"
+"Service roads","Net (expected FW score)",2.709,2.527,2.904,1
+"Service roads","Presence",2.709,2.527,2.904,1
+"Service roads","Quantity",1,1,1,0
+"Housing-tenure—density","Net (expected FW score)",1.152,0.946,1.442,0.924
+"Housing-tenure—density","Presence",0.83,0.756,0.907,0
+"Housing-tenure—density","Quantity",1.39,1.168,1.713,0.999
+"Deprivation","Net (expected FW score)",1.158,1.01,1.321,0.98
+"Deprivation","Presence",1.378,1.278,1.484,1
+"Deprivation","Quantity",0.842,0.747,0.931,0
+"Disenfranchisement","Net (expected FW score)",1.031,0.913,1.153,0.702
+"Disenfranchisement","Presence",0.944,0.854,1.038,0.112
+"Disenfranchisement","Quantity",1.093,1.024,1.169,0.997

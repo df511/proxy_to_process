@@ -44,9 +44,9 @@ reorder_cormat <- function(cormat){
 ```
 ```{r setup, include=FALSE}
 ## Main model for the revised figures (used by every revised chunk below):
-##   "F123"     the three socio-political scales on quantity only; service roads on presence
-##   "F123_all" the three scales on both quantity and presence
-main_model <- "F123"
+##   "F123_all" the three socio-political scales on both quantity and presence (main model)
+##   "F123"     the three scales on quantity only; service roads on presence
+main_model <- "F123_all"
 # ### read empirical data
 load(file = here("data", "dat_final_750.Rdata"))
 load(file = here("data", "dat_no_ub_750.Rdata")) ### without UBC site (not used in final model)
@@ -55,42 +55,28 @@ load(file = here("data", "dat_no_ub_750.Rdata")) ### without UBC site (not used 
 ```
 
 
-#### Generate Figure S1, correlation matrix of variables associated with the presence of food waste #####
+#### Generate Figure S1, correlation matrix of the 16 variables in the factor analysis (Figure S2) #####
 
 ```{r}
 
-#### cor matrix 750. m #####
-### explore correlation of variables associated with the presence of food waste ### 
+#### cor matrix 750 m: the factor-analysis variables #####
 
 
-dat_no_ub_no0s <- dat_no_ub %>%
-  filter(fw_score_weighted > 0 ) ### 0 equivalent val (minimum fw_score_weighted val after scaling, not to be used as response)
-
-# dat_no_ub_scaled_no0s <- dat_no_ub %>%
-#   filter(fw_score_weighted > -0.1632483) ### 0 equivalent val (minimum fw_score_weighted val after scaling, not to be used as response)
-# 
-
-
-my_data <- dat_no_ub_no0s %>% select(where(is.numeric))
-#my_data <- dat_no_ub_scaled_no0s %>% select(where(is.numeric))
-my_data <- as.data.frame(my_data)
-
-my_data <- my_data[, colSums(is.na(my_data)) == 0]  # Remove NA columns
-
-# Define the variables to keep in the heatmap
-selected_vars <- c("rent_pct", "single_detached" ,
-                   "nearest_food_retail","nearest_shelter_dist","indig_pct",
-                   "female_pct", "SCOREMAT", "SCORESOC", "pop_km",
-                   "household_income", "housing_highdensity", "housing_lowdensity",
-                   "thirtyonshelter_majorrepairs", "notsuitable_majorrepairs", "pct_rent_subsidized", "pct_housing_notsuitable","pct_rent_thiry", "housing_low_density", "housing_high_density", "poorservice_housing")  # Replace with actual column names
-
-
-
-# Ensure the selected variables exist in the dataset
-selected_vars <- selected_vars[selected_vars %in% colnames(my_data)]
-
-# Subset data to only include selected variables
-my_data_subset <- my_data[, selected_vars]
+## Revised November 2026: the same 16 variables as the factor analysis (Figure S2), with the same
+## labels, computed on all transect cells (the data the factor analysis used).
+fa_vars <- c(
+  rent_pct = "% renters", nearest_shelter_dist = "Distance to shelter",
+  nearest_food_retail = "Distance to food retail", pop_km = "Population density",
+  household_income = "Household income", employed_pct = "% employed",
+  no_diploma_pct = "% no diploma", separated_divorced_widowed_pct = "% separated/divorced/widowed",
+  female_pct = "% female", one_parent_pct = "% one-parent families",
+  avg_household_size = "Household size", housing_highdensity = "High-density housing",
+  pct_major_repairs = "% needing major repairs", pct_rent_thirty = "% rent > 30% of income",
+  pct_rent_subsidized = "% subsidized rent", pct_unsuitable_housing = "% unsuitable housing"
+)
+my_data_subset <- as.data.frame(sf::st_drop_geometry(dat_no_ub))[, names(fa_vars)]
+stopifnot(!anyNA(my_data_subset))
+colnames(my_data_subset) <- unname(fa_vars)
 cormat <- cor(my_data_subset)
 
 cormat <- reorder_cormat(cormat)
@@ -126,8 +112,8 @@ ggsave(
   filename = here("figs", "FigureS1.pdf"),
   plot = heatmap,
   device = pdf,
-  width = 8,
-  height = 7,
+  width = 9,
+  height = 8,
   units = "in",
   dpi = 300
 )
@@ -136,9 +122,10 @@ ggsave(
 
 #### Figures S2, S5, S6 and supplementary tables (revised November 2026)
 
-The main model is set by `main_model` in the chunk below: **F123** (default), with the three
-socio-political scales (Housing-tenure—density, Deprivation, Disenfranchisement) on the quantity of
-food waste and service roads on its presence, or **F123_all**, with the scales on both parts. Both
+The main model is set by `main_model` in the setup chunk: **F123_all** (main model), with the
+three socio-political scales (Housing-tenure—density, Deprivation, Disenfranchisement) on both the
+presence and the quantity of food waste, or **F123**, with the scales on quantity only and service
+roads on presence. Alternative models are compared in Figure S16. Both
 are fit to the corrected 3-factor, 16-variable factor analysis
 (`src/factor_analysis_revision.R`). Scales are oriented so that higher values are the less
 privileged condition; presence effects are on the log-odds of presence.
@@ -148,7 +135,7 @@ The chunk below writes:
 - `figs/FigureS2.pdf`: factor-analysis loading biplots (oriented)
 - `figs/FigureS5.pdf`: prior predictive simulations for the main model
 - `figs/FigureS6.png`: posterior predictive checks for the main model
-- `tables/Table_factor_loadings.csv`, `tables/Table_F123_coefficients.csv` (main model),
+- `tables/Table_factor_loadings.csv`, `tables/Table_F123_all_coefficients.csv` (main model),
   `tables/Table_LOO_all_models.csv`, `tables/Table_bins_litter.csv`,
   `tables/Table_weight_sensitivity.csv`
 
@@ -171,9 +158,9 @@ local({
   dir.create(here("figs"), showWarnings = FALSE)
 
   ## ---- Main model ------------------------------------------------------------------------
-  ## "F123":     the three scales on quantity only; service roads on presence (main model)
-  ## "F123_all": the three scales on both quantity and presence
-  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  ## "F123_all": the three scales on both quantity and presence (main model)
+  ## "F123":     the three scales on quantity only; service roads on presence
+  if (!exists("main_model")) main_model <- "F123_all"   # set once in the setup chunk
   model_cfg <- list(
     F123     = list(fit = "fit_hier_ZIW_16var_F123.Rdata",
                     pars = c("beta1", "beta2", "beta3", "delta1")),
@@ -597,8 +584,11 @@ local({
   label_df$Y[i_col] <- label_df$Y[i_col] + 120; label_df$X[i_col] <- label_df$X[i_col] - 120
   label_df$Y[i_mck] <- label_df$Y[i_mck] + 300; label_df$X[i_mck] <- label_df$X[i_mck] + 300
 
-  offsets <- expand.grid(dx = c(-0.5, 0, 0.5), dy = c(-0.5, 0, 0.5))
-  offsets <- offsets[!(offsets$dx == 0 & offsets$dy == 0), ]
+  ## Black halo behind the white labels: copies of each label shifted by halo_r map units
+  ## (EPSG:3857; about 170 units = 1 mm at this figure size) in 16 directions.
+  halo_r <- 90   # increase for a thicker outline (about 0.5 mm at this figure size)
+  ang <- seq(0, 2 * pi, length.out = 17)[-17]
+  offsets <- data.frame(dx = halo_r * cos(ang), dy = halo_r * sin(ang))
   outline_df <- do.call(rbind, lapply(seq_len(nrow(offsets)), function(i)
     transform(label_df, X = X + offsets$dx[i], Y = Y + offsets$dy[i])))
 
@@ -613,18 +603,19 @@ local({
     limits = c(-L, L), oob = squish, na.value = mask_col, name = "Score"
   )
 
+  panel_letter <- setNames(c("(a)", "(b)", "(c)"), names(k))
   map_one <- function(s, label_size = 3) {
     ggplot() +
       geom_sf(data = van_dat_fa, aes(fill = .data[[s]]), color = NA) +
       geom_sf(data = sites_3857, fill = NA, color = "black", linewidth = 1.2) +
       geom_sf(data = sites_3857, fill = NA, color = "white", linewidth = 0.5) +
       geom_text(data = outline_df, aes(X, Y, label = label),
-                size = label_size + 0.05, fontface = "bold", color = "black") +
+                size = label_size, fontface = "bold", color = "black") +
       geom_text(data = label_df, aes(X, Y, label = label),
                 size = label_size, fontface = "bold", color = "white") +
       fill_scale +
       guides(fill = guide_colourbar(barheight = unit(7, "lines"))) +
-      labs(title = titles[[s]], subtitle = subtitles[[s]]) +
+      labs(title = paste(panel_letter[[s]], titles[[s]]), subtitle = subtitles[[s]]) +
       theme_void(base_size = 10) +
       theme(plot.title = element_text(face = "bold", size = 11),
             plot.subtitle = element_text(size = 8.5),
@@ -634,19 +625,20 @@ local({
 
   maps <- lapply(setNames(names(k), names(k)), map_one)
 
-  fig <- plot_grid(plotlist = maps, ncol = 1, labels = c("(a)", "(b)", "(c)"),
-                   label_size = 12, hjust = 0, label_x = 0.01)
+  fig <- plot_grid(plotlist = maps, ncol = 1)   # panel letters are part of each title
   ggsave(here("figs", "FigureS7.pdf"), fig, width = 7, height = 15)
   cat("\nDone: FigureS7.pdf\n")
 })
 ```
 
-#### Figure S8: net effect of each scale on expected food waste
+#### Net effects of each scale on expected food waste (table only)
 
-Revised: ratio of expected food waste score at +1 SD (towards the less privileged condition) to the
-transect mean, with its presence and quantity components.
+Ratio of expected food waste score at +1 SD (towards the less privileged condition) to the
+transect mean, with its presence and quantity components, written to
+`tables/Table_net_effects.csv` for reporting in the text. (Formerly Figure S8; the figure was
+dropped because, with the scales on quantity only, it largely re-expresses Figure 3a.)
 
-```{r figure-S8-net-effects}
+```{r net-effects-table}
 local({
   library(here)
   library(sf)
@@ -665,7 +657,7 @@ local({
   sd_fac <- sapply(k, function(kk) sd(dat_final_16var[[paste0("Factor", kk)]]))
   cat("Transect SD of each factor score:", round(sd_fac, 3), "\n")
 
-  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  if (!exists("main_model")) main_model <- "F123_all"   # set once in the setup chunk
   fit_file <- c(F123 = "fit_hier_ZIW_16var_F123.Rdata",
                 F123_all = "fit_hier_ZIW_16var_F123_all.Rdata")[[main_model]]
   cat("Main model:", main_model, "\n")
@@ -723,29 +715,13 @@ local({
   cat("\nRatio of expected value at +1 SD (towards the less privileged condition) vs. the transect mean:\n")
   print(tab)
 
-  ## Figure: ratios on a log scale; 1 = no change
-  tab$scale   <- factor(tab$scale, levels = rev(unname(labels)))
-  tab$measure <- factor(tab$measure, levels = c("Net (expected FW score)", "Presence", "Quantity"))
-  p <- ggplot(tab, aes(x = median, y = scale, colour = measure, shape = measure)) +
-    geom_vline(xintercept = 1, linetype = "dashed", colour = "grey50") +
-    geom_pointrange(aes(xmin = lower_95, xmax = upper_95),
-                    position = position_dodge(width = 0.6), size = 0.4) +
-    scale_x_log10() +
-    scale_colour_manual(values = c("Net (expected FW score)" = "black",
-                                   "Presence" = "orange", "Quantity" = "purple"), name = NULL) +
-    scale_shape_manual(values = c("Net (expected FW score)" = 16, "Presence" = 17, "Quantity" = 15),
-                       name = NULL) +
-    labs(x = "Ratio at +1 SD vs. transect mean (log scale)", y = NULL) +
-    theme_minimal(base_size = 11) +
-    theme(legend.position = "top")
-  ggsave(here("figs", "FigureS8.pdf"), p, width = 6.5, height = 4)
 
-  cat("\nDone: tables/Table_net_effects.csv and figs/FigureS8.pdf\n")
+  cat("\nDone: tables/Table_net_effects.csv\n")
 })
 ```
 
 
-#### Figure S9
+#### Figure S8
 
 ```{r}
 library(sf)
@@ -811,10 +787,12 @@ label_df <- as.data.frame(label_coords_offset)
 colnames(label_df) <- c("X", "Y")
 label_df$label <- site_labels
 
-# Offsets for 8-direction outline
-offsets <- expand.grid(dx = c(-0.5, 0, 0.5),
-                       dy = c(-0.5, 0, 0.5))
-offsets <- offsets[!(offsets$dx == 0 & offsets$dy == 0), ]
+# Black halo behind the white labels (used by Figures S8-S13): copies of each label, at the same
+# size as the white text, shifted by halo_r map units (EPSG:3857; about 115 units = 1 mm at
+# 10 x 8 in) in 16 directions, so the outline is centred on every letter.
+halo_r <- 60   # increase for a thicker outline
+ang <- seq(0, 2 * pi, length.out = 17)[-17]
+offsets <- data.frame(dx = halo_r * cos(ang), dy = halo_r * sin(ang))
 
 # Duplicate label data for outline
 outline_df <- do.call(rbind, lapply(1:nrow(offsets), function(i) {
@@ -825,7 +803,7 @@ outline_df <- do.call(rbind, lapply(1:nrow(offsets), function(i) {
 
 
 # Define output file name and resolution
-pdf(here("figs","FigureS9.pdf"), width = 10, height = 8)
+pdf(here("figs","FigureS8.pdf"), width = 10, height = 8)
 
 ggplot() +
   # Base raster/grid layer
@@ -838,7 +816,7 @@ ggplot() +
 geom_text(
   data = outline_df,
   aes(x = X, y = Y, label = label),
-  size = 4.1,
+  size = 4,
   fontface = "bold",
   color = "black"
 ) +
@@ -866,11 +844,11 @@ geom_text(
 dev.off()
 ```
 
-#### Figure S10
+#### Figure S9
 
 ```{r}
 # Define output file name and resolution
-pdf(here("figs","FigureS10.pdf"), width = 10, height = 8)
+pdf(here("figs","FigureS9.pdf"), width = 10, height = 8)
 
 ggplot() +
   # Base raster/grid layer
@@ -883,7 +861,7 @@ ggplot() +
 geom_text(
   data = outline_df,
   aes(x = X, y = Y, label = label),
-  size = 4.1,
+  size = 4,
   fontface = "bold",
   color = "black"
 ) +
@@ -911,11 +889,11 @@ geom_text(
 dev.off()
 ```
 
-#### Figure S11
+#### Figure S10
 
 ```{r}
 # Define output file name and resolution
-pdf(here("figs","FigureS11.pdf"), width = 10, height = 8)
+pdf(here("figs","FigureS10.pdf"), width = 10, height = 8)
 
 ggplot() +
   # Base raster/grid layer
@@ -928,7 +906,7 @@ ggplot() +
 geom_text(
   data = outline_df,
   aes(x = X, y = Y, label = label),
-  size = 4.1,
+  size = 4,
   fontface = "bold",
   color = "black"
 ) +
@@ -956,11 +934,11 @@ geom_text(
 dev.off()
 ```
 
-#### Figure S12
+#### Figure S11
 
 ```{r}
 # Define output file name and resolution
-pdf(here("figs","FigureS12.pdf"), width = 10, height = 8)
+pdf(here("figs","FigureS11.pdf"), width = 10, height = 8)
 
 ggplot() +
   # Base raster/grid layer
@@ -973,7 +951,7 @@ ggplot() +
 geom_text(
   data = outline_df,
   aes(x = X, y = Y, label = label),
-  size = 4.1,
+  size = 4,
   fontface = "bold",
   color = "black"
 ) +
@@ -1002,11 +980,11 @@ dev.off()
 ```
 
 
-### Figure S13: Material deprivation score
+### Figure S12: Material deprivation score
 
 ```{r}
 # Define output file name and resolution
-pdf(here("figs","FigureS13.pdf"), width = 10, height = 8)
+pdf(here("figs","FigureS12.pdf"), width = 10, height = 8)
 
 ggplot() +
   # Base raster/grid layer
@@ -1019,7 +997,7 @@ ggplot() +
 geom_text(
   data = outline_df,
   aes(x = X, y = Y, label = label),
-  size = 4.1,
+  size = 4,
   fontface = "bold",
   color = "black"
 ) +
@@ -1048,11 +1026,11 @@ dev.off()
 ```
 
 
-#### Figure S14: Social deprivation score
+#### Figure S13: Social deprivation score
 
 ```{r}
 # Define output file name and resolution
-pdf(here("figs","FigureS14.pdf"), width = 10, height = 8)
+pdf(here("figs","FigureS13.pdf"), width = 10, height = 8)
 
 ggplot() +
   # Base raster/grid layer
@@ -1065,7 +1043,7 @@ ggplot() +
 geom_text(
   data = outline_df,
   aes(x = X, y = Y, label = label),
-  size = 4.1,
+  size = 4,
   fontface = "bold",
   color = "black"
 ) +
@@ -1093,7 +1071,7 @@ geom_text(
 dev.off()
 ```
 
-#### Figure S15: posterior predictive checks of the proxy (Tweedie) model
+#### Figure S14: posterior predictive checks of the proxy (Tweedie) model
 ```{r}
 
 load( file = here("data","fit_hier_1pred_tweedie.Rdata"))
@@ -1258,7 +1236,7 @@ print(final_plot)
 
 # Save wide version
 ggsave(
-  here("figs","FigureS15.png"),
+  here("figs","FigureS14.png"),
   final_plot,
   width = 12,
   height = 4,
@@ -1268,13 +1246,13 @@ ggsave(
 ```
 
 
-#### Figure S16: expected food waste score averaged to 750 m cells (new, November 2026)
+#### Figure S15: expected food waste score averaged to 750 m cells (new, November 2026)
 
-Main model (F123 by default; set `main_model`), posterior-median expected food waste score averaged within 750 m cells
+Main model (F123_all; set `main_model`), posterior-median expected food waste score averaged within 750 m cells
 (UTM 10N). Cells less than half inside the city grid, or less than half within the shown
 (unmasked) area, are dropped.
 
-```{r figure-S16-750m}
+```{r figure-S15-750m}
 local({
   library(here)
   library(sf)
@@ -1282,7 +1260,7 @@ local({
   library(ggplot2)
   library(scales)
 
-  if (!exists("main_model")) main_model <- "F123"   # set once in the setup chunk
+  if (!exists("main_model")) main_model <- "F123_all"   # set once in the setup chunk
   load(here("data", "van_dat_predictions_16var.Rdata"))   # van_dat_fa (pred_*, in_domain)
   van_dat_fa$pred_main <- van_dat_fa[[paste0("pred_", main_model)]]
   if ("in_domain" %in% names(van_dat_fa)) van_dat_fa <- van_dat_fa[van_dat_fa$in_domain, ]
@@ -1313,8 +1291,88 @@ local({
     scale_fill_viridis_c(option = "inferno", limits = lims750, oob = squish,
                          name = "Mean expected\nFW Score") +
     map_theme
-  ggsave(here("figs", "FigureS16.pdf"), p750, width = 8, height = 6)
+  ggsave(here("figs", "FigureS15.pdf"), p750, width = 8, height = 6)
 
-  cat("\nDone: FigureS16.pdf\n")
+  cat("\nDone: FigureS15.pdf\n")
+})
+```
+
+
+#### Figure S16: socio-political effects across alternative models (new, November 2026)
+
+Posterior medians and 95% intervals of each effect in the main model (**F123_all**: the three
+scales on presence and quantity) and two alternatives: **F123** (the three scales on quantity only)
+and **F13** (Housing-tenure—density and Disenfranchisement on quantity only). Same orientation as
+Figure 3: higher scale values are the less privileged condition; presence effects are on the
+log-odds of presence. Also written to `tables/Table_alternative_models_coefficients.csv`.
+
+```{r figure-S16-model-comparison}
+local({
+  library(here)
+  library(dplyr)
+  library(ggplot2)
+  library(rstan)
+
+  ## For each model: fit file, and for each parameter the term it represents and the multiplier
+  ## that gives the Figure 3 orientation (Housing and Enfranchisement reversed; presence = -absence)
+  models <- list(
+    F123_all = list(file = "fit_hier_ZIW_16var_F123_all.Rdata",
+                    map = rbind(c("beta1",  "Quantity", "Housing-tenure—density", -1),
+                                c("beta2",  "Quantity", "Deprivation",                  1),
+                                c("beta3",  "Quantity", "Disenfranchisement",          -1),
+                                c("delta1", "Presence", "Service roads",               -1),
+                                c("delta3", "Presence", "Housing-tenure—density",  1),
+                                c("delta2", "Presence", "Deprivation",                 -1),
+                                c("delta4", "Presence", "Disenfranchisement",           1))),
+    F123     = list(file = "fit_hier_ZIW_16var_F123.Rdata",
+                    map = rbind(c("beta1",  "Quantity", "Housing-tenure—density", -1),
+                                c("beta2",  "Quantity", "Deprivation",                  1),
+                                c("beta3",  "Quantity", "Disenfranchisement",          -1),
+                                c("delta1", "Presence", "Service roads",               -1))),
+    F13      = list(file = "fit_hier_ZIW_16var_F13.Rdata",          # X2 = Enfranchisement in F13
+                    map = rbind(c("beta1",  "Quantity", "Housing-tenure—density", -1),
+                                c("beta2",  "Quantity", "Disenfranchisement",          -1),
+                                c("delta1", "Presence", "Service roads",               -1)))
+  )
+  model_label <- c(F123_all = "F123_all (main)", F123 = "F123", F13 = "F13")
+
+  tab <- do.call(rbind, lapply(names(models), function(m) {
+    env <- new.env(); load(here("data", models[[m]]$file), envir = env)
+    fit <- get(ls(env)[1], envir = env)
+    mp <- models[[m]]$map
+    post <- rstan::extract(fit, pars = mp[, 1])
+    rm(fit, env); gc()
+    do.call(rbind, lapply(seq_len(nrow(mp)), function(i) {
+      x <- post[[mp[i, 1]]] * as.numeric(mp[i, 4])
+      data.frame(model = model_label[[m]], component = mp[i, 2], term = mp[i, 3],
+                 median = median(x), lower_95 = unname(quantile(x, 0.025)),
+                 upper_95 = unname(quantile(x, 0.975)))
+    }))
+  }))
+  tab[, c("median", "lower_95", "upper_95")] <- round(tab[, c("median", "lower_95", "upper_95")], 3)
+  dir.create(here("tables"), showWarnings = FALSE)
+  write.csv(tab, here("tables", "Table_alternative_models_coefficients.csv"), row.names = FALSE)
+  print(tab)
+
+  term_order <- c("Service roads", "Housing-tenure—density", "Deprivation", "Disenfranchisement")
+  tab$term      <- factor(tab$term, levels = rev(term_order))
+  tab$model     <- factor(tab$model, levels = unname(model_label))
+  tab$component <- factor(tab$component, levels = c("Quantity", "Presence"),
+                          labels = c("Effect on quantity", "Effect on presence"))
+
+  p <- ggplot(tab, aes(x = median, y = term, colour = model, shape = model)) +
+    geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+    geom_pointrange(aes(xmin = lower_95, xmax = upper_95),
+                    position = position_dodge(width = 0.6), size = 0.35) +
+    facet_wrap(~ component, scales = "free_x") +
+    scale_colour_manual(values = c("F123_all (main)" = "black", "F123" = "#2166ac", "F13" = "#d6604d"),
+                        name = NULL) +
+    scale_shape_manual(values = c("F123_all (main)" = 16, "F123" = 17, "F13" = 15), name = NULL) +
+    labs(x = "Coefficient value (median and 95% interval)", y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", strip.text = element_text(face = "bold"))
+  ggsave(here("figs", "FigureS16.pdf"), p, width = 8, height = 4)
+
+  cat("\nDone: FigureS16.pdf and tables/Table_alternative_models_coefficients.csv\n")
 })
 ```
